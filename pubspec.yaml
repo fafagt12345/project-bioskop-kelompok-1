@@ -1,0 +1,19 @@
+name: bioskop_app
+description: A simple bioskop booking app (dummy data)
+publish_to: "none"
+version: 1.0.0
+
+environment:
+  sdk: ">=2.18.0 <4.0.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+  provider: ^6.0.5
+  intl: ^0.18.0
+  http: ^0.13.5
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/logo.png
