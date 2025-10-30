@@ -21,7 +21,7 @@ class SchedulePage extends StatelessWidget {
           return ListTile(
             title: Text('${j['date']} ${j['time']}'),
             subtitle: Text(j['studio'] ?? ''),
-            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => SeatSelectionPage(jadwalId: int.parse(j['id']!)))),
+            onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => SeatSelectionPage(jadwalId: int.parse(j['id']!), filmTitle: '',))),
           );
         }
       ),
