@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../api_service.dart';
-import 'film_list_page.dart';
+import 'home_page.dart';
 import 'registration_page.dart';
 
 class LoginPage extends StatefulWidget {
@@ -26,7 +26,7 @@ class _LoginPageState extends State<LoginPage> {
       api.setToken(token);
 
       if (!mounted) return;
-      Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const FilmListPage()));
+      Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const HomePage()));
     } on ApiException catch (e) {
       final msg = (e.status == 401 || e.status == 404) ? 'Username atau password salah' : e.message;
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));

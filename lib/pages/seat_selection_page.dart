@@ -5,7 +5,6 @@ import 'checkout_success_page.dart';
 class SeatSelectionPage extends StatefulWidget {
   final int jadwalId;
   final String filmTitle;
-
   const SeatSelectionPage({super.key, required this.jadwalId, required this.filmTitle});
 
   @override
@@ -17,7 +16,6 @@ class _SeatSelectionPageState extends State<SeatSelectionPage> {
   bool _loading = true;
   List<Map<String, dynamic>> _seats = [];
   final Set<int> _selected = {};
-  int? _harga;
 
   @override
   void initState() {
@@ -25,24 +23,19 @@ class _SeatSelectionPageState extends State<SeatSelectionPage> {
     _load();
   }
 
+  int _asInt(dynamic v) {
+    if (v == null) return 0;
+    if (v is int) return v;
+    if (v is double) return v.round();
+    return int.tryParse('$v') ?? 0;
+  }
+
   Future<void> _load() async {
     setState(() => _loading = true);
     try {
       final rows = await api.seatsAvailable(widget.jadwalId);
       final parsed = rows.map((e) => Map<String, dynamic>.from(e as Map)).toList();
-
-      // ambil harga (jika ada di seat); kalau tidak ada, biarkan null (total dihitung di backend)
-      final firstWithPrice = parsed.firstWhere(
-        (e) => e.containsKey('harga'),
-        orElse: () => {},
-      );
-
-      setState(() {
-        _seats = parsed;
-        _harga = (firstWithPrice['harga'] is int)
-            ? firstWithPrice['harga'] as int
-            : int.tryParse('${firstWithPrice['harga'] ?? ''}');
-      });
+      setState(() => _seats = parsed);
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Gagal load kursi: $e')));
@@ -56,9 +49,46 @@ class _SeatSelectionPageState extends State<SeatSelectionPage> {
     return (s['nama_kursi'] ?? s['nomor_kursi'] ?? s['label'] ?? s['kursi_id'] ?? '').toString();
   }
 
+  bool _isSold(Map<String, dynamic> s) {
+    final st = (s['status'] ?? '').toString().toLowerCase();
+    return st == 'terjual' || st == 'sold';
+  }
+
+  int _priceOf(int kursiId) {
+    final m = _seats.firstWhere(
+      (e) => (e['kursi_id'] is num ? (e['kursi_id'] as num).toInt() : int.tryParse('${e['kursi_id']}') ?? -1) == kursiId,
+      orElse: () => const {},
+    );
+    return _asInt(m['harga']);
+  }
+
+  int get _total {
+    int sum = 0;
+    for (final id in _selected) {
+      sum += _priceOf(id);
+    }
+    return sum;
+  }
+
+  Future<void> _checkout() async {
+    try {
+      // TODO: ganti customerId sesuai user yg login
+      final res = await api.checkout(
+        customerId: 1,
+        jadwalId: widget.jadwalId,
+        kursiIds: _selected.toList(),
+      );
+      if (!mounted) return;
+      Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => CheckoutSuccessPage(data: res)));
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Checkout gagal: $e')));
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    final total = (_harga ?? 0) * _selected.length;
     return Scaffold(
       appBar: AppBar(title: Text('Pilih Kursi • ${widget.filmTitle}')),
       bottomNavigationBar: SafeArea(
@@ -66,7 +96,7 @@ class _SeatSelectionPageState extends State<SeatSelectionPage> {
           padding: const EdgeInsets.all(12.0),
           child: Row(
             children: [
-              Expanded(child: Text('Dipilih: ${_selected.length}  |  Total: Rp $total')),
+              Expanded(child: Text('Dipilih: ${_selected.length}  |  Total: Rp ${_total}')),
               FilledButton.icon(
                 onPressed: _selected.isEmpty ? null : _checkout,
                 icon: const Icon(Icons.payment),
@@ -78,78 +108,62 @@ class _SeatSelectionPageState extends State<SeatSelectionPage> {
       ),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
-          : GridView.builder(
+          : SingleChildScrollView(
               padding: const EdgeInsets.all(12),
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 6,
-                crossAxisSpacing: 6,
-                mainAxisSpacing: 6,
-                childAspectRatio: 1.3,
-              ),
-              itemCount: _seats.length,
-              itemBuilder: (context, i) {
-                final s = _seats[i];
-                final idRaw = s['kursi_id'] ?? s['id'] ?? s.values.first;
-                final kursiId = (idRaw is int) ? idRaw : (int.tryParse('$idRaw') ?? -1);
-                final selected = _selected.contains(kursiId);
-                final sold = (s['status'] ?? '').toString().toLowerCase() == 'sold';
+              child: Wrap(
+                spacing: 10,
+                runSpacing: 10,
+                children: _seats.map((s) {
+                  final kursiId = (s['kursi_id'] is num) ? (s['kursi_id'] as num).toInt() : int.tryParse('${s['kursi_id']}') ?? 0;
+                  final sold    = _isSold(s);
+                  final selected = _selected.contains(kursiId);
+                  final price   = _asInt(s['harga']);
 
-                return InkWell(
-                  onTap: sold
-                      ? null
-                      : () {
-                          setState(() {
-                            if (selected) _selected.remove(kursiId);
-                            else _selected.add(kursiId);
-                          });
-                        },
-                  child: Container(
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(
+                  return InkWell(
+                    onTap: sold
+                        ? null
+                        : () {
+                            setState(() {
+                              if (selected) _selected.remove(kursiId);
+                              else _selected.add(kursiId);
+                            });
+                          },
+                    child: Container(
+                      width: 90, height: 70,
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: sold
+                              ? Colors.grey.shade300
+                              : selected ? Colors.indigo : Colors.grey.shade400,
+                          width: 2,
+                        ),
                         color: sold
-                            ? Colors.redAccent
-                            : (selected ? Colors.indigo : Colors.grey.shade300),
-                        width: 2,
+                            ? Colors.grey.shade200
+                            : selected ? Colors.indigo.withOpacity(0.08) : Colors.white,
                       ),
-                      color: sold
-                          ? Colors.redAccent.withOpacity(0.08)
-                          : (selected ? Colors.indigo.withOpacity(0.1) : Colors.white),
-                    ),
-                    alignment: Alignment.center,
-                    child: Text(
-                      _label(s),
-                      style: TextStyle(
-                        fontWeight: FontWeight.w600,
-                        color: sold
-                            ? Colors.redAccent
-                            : (selected ? Colors.indigo : Colors.black),
+                      alignment: Alignment.center,
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(_label(s),
+                              style: TextStyle(
+                                fontWeight: FontWeight.w700,
+                                color: sold ? Colors.grey : (selected ? Colors.indigo : Colors.black),
+                              )),
+                          const SizedBox(height: 4),
+                          Text('Rp $price',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: sold ? Colors.grey : Colors.black87,
+                              )),
+                        ],
                       ),
                     ),
-                  ),
-                );
-              },
+                  );
+                }).toList(),
+              ),
             ),
     );
-  }
-
-  Future<void> _checkout() async {
-    try {
-      // TODO: ganti customerId sesuai user yang login (sementara pakai 1)
-      final res = await api.checkout(
-        customerId: 1,
-        jadwalId: widget.jadwalId,
-        kursiIds: _selected.toList(),
-      );
-      if (!mounted) return;
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (_) => CheckoutSuccessPage(data: res)),
-      );
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Checkout gagal: $e')));
-      }
-    }
   }
 }

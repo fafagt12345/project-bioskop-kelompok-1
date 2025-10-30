@@ -96,14 +96,21 @@ class ApiService {
     }
   }
 
-  Future<Map<String, dynamic>> filmDetail(dynamic id) async {
-    try {
-      final res = await _dio.get('/film/$id');
-      return Map<String, dynamic>.from(res.data as Map);
-    } on DioException catch (e) {
-      throw _wrap(e);
+Future<Map<String, dynamic>> filmDetail(dynamic id) async {
+  try {
+    final res = await _dio.get('/film/$id');
+    final d = res.data;
+
+    if (d is Map) {
+      if (d['data'] is Map) return Map<String, dynamic>.from(d['data'] as Map);
+      if (d['film'] is Map) return Map<String, dynamic>.from(d['film'] as Map);
+      return Map<String, dynamic>.from(d);
     }
+    throw ApiException('Format response tidak dikenali', status: res.statusCode, data: d);
+  } on DioException catch (e) {
+    throw _wrap(e);
   }
+}
 
   Future<Map<String, dynamic>> createFilm(Map<String, dynamic> body) async {
     try {
