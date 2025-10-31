@@ -1,3 +1,2 @@
-# bioskop_app
-
-A new Flutter project.
+PROJECT KELOMPOK 1
+"PEMESANAN TIKET BIOSKOP"
