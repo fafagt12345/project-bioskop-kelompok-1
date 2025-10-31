@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart' show kIsWeb, defaultTargetPlatform, TargetPlatform;
 
@@ -32,14 +33,19 @@ class PaginatedResponse {
         currentPage: json['current_page'] ?? 1,
         lastPage: json['last_page'] ?? 1,
         perPage: json['per_page'] is int ? json['per_page'] : int.tryParse('${json['per_page'] ?? 10}') ?? 10,
-        total: json['total'] ?? ((json['data'] is List) ? (json['data'] as List).length : 0),
+        total: json['total'] ?? (json['data'] is List ? (json['data'] as List).length : 0),
       );
     }
+    // fallback: array biasa
+    final list = (json is List)
+        ? json
+        : (json is Map && json['data'] is List ? (json['data'] as List) : <dynamic>[]);
     return PaginatedResponse(
-      data: (json is List) ? json : (json is Map && json['data'] is List ? (json['data'] as List) : []),
-      currentPage: 1, lastPage: 1,
-      perPage: (json is List) ? json.length : 0,
-      total: (json is List) ? json.length : (json is Map && json['data'] is List ? (json['data'] as List).length : 0),
+      data: list,
+      currentPage: 1,
+      lastPage: 1,
+      perPage: list.length,
+      total: list.length,
     );
   }
 }
@@ -55,28 +61,29 @@ class ApiService {
     return 'http://127.0.0.1:8000';
   }
 
-  static String baseFromEnv() => const String.fromEnvironment('API_BASE_URL');
-
   ApiService({String? base})
-      : baseUrl = (base ?? (baseFromEnv().isNotEmpty ? baseFromEnv() : suggestBaseUrl())),
-        _dio = Dio(BaseOptions(
-          connectTimeout: const Duration(seconds: 10),
-          receiveTimeout: const Duration(seconds: 20),
-          headers: {'Accept': 'application/json', 'Content-Type': 'application/json'},
-        )) {
+      : baseUrl = base ?? suggestBaseUrl(),
+        _dio = Dio(
+          BaseOptions(
+            connectTimeout: const Duration(seconds: 10),
+            receiveTimeout: const Duration(seconds: 20),
+            headers: {'Accept': 'application/json', 'Content-Type': 'application/json'},
+          ),
+        ) {
     _dio.interceptors.add(InterceptorsWrapper(
-      onRequest: (options, handler) {
-        if (!options.path.startsWith('http')) {
-          final norm = options.path.startsWith('/api/')
-              ? options.path
-              : '/api${options.path.startsWith('/') ? '' : '/'}${options.path}';
-          options.baseUrl = baseUrl;
-          options.path = norm;
+      onRequest: (opt, handler) {
+        if (!opt.path.startsWith('http')) {
+          final prefix = base ?? suggestBaseUrl();
+          final norm = opt.path.startsWith('/api/')
+              ? opt.path
+              : '/api${opt.path.startsWith('/') ? '' : '/'}${opt.path}';
+          opt.baseUrl = prefix;
+          opt.path = norm;
         }
         if (_token != null && _token!.isNotEmpty) {
-          options.headers['Authorization'] = 'Bearer $_token';
+          opt.headers['Authorization'] = 'Bearer $_token';
         }
-        handler.next(options);
+        handler.next(opt);
       },
       onError: (e, h) => h.next(e),
     ));
@@ -84,41 +91,54 @@ class ApiService {
 
   void setToken(String? token) => _token = token;
 
-  // ---- FILM ----
-  Future<PaginatedResponse> films({int page = 1, int perPage = 20, String? search}) async {
+  // ===== AUTH =====
+  Future<Map<String, dynamic>> register(String username, String password, {String? name, String? email}) async {
     try {
-      final res = await _dio.get('/film', queryParameters: {
-        'page': page, 'per_page': perPage, if (search != null && search.isNotEmpty) 'search': search,
+      final res = await _dio.post('/auth/register', data: {
+        'username': username,
+        'password': password,
+        if (name != null) 'name': name,
+        if (email != null) 'email': email,
       });
+      return _toMap(res.data);
+    } on DioException catch (e) { throw _wrap(e); }
+  }
+
+  Future<String> login(String username, String password) async {
+    try {
+      final res = await _dio.post('/auth/login', data: {'username': username, 'password': password});
+      final m = _toMap(res.data);
+      final t = (m['token'] ?? '') as String;
+      if (t.isNotEmpty) setToken(t);
+      return t;
+    } on DioException catch (e) { throw _wrap(e); }
+  }
+
+  // ===== FILM =====
+  Future<PaginatedResponse> films({int page = 1, int perPage = 50, String? search}) async {
+    try {
+      final qp = <String, dynamic>{
+        'page': page,
+        'per_page': perPage,
+        if (search != null && search.isNotEmpty) 'search': search,
+      };
+      final res = await _dio.get('/film', queryParameters: qp);
       return PaginatedResponse.from(res.data);
-    } on DioException catch (e) {
-      throw _wrap(e);
-    }
+    } on DioException catch (e) { throw _wrap(e); }
   }
 
-Future<Map<String, dynamic>> filmDetail(dynamic id) async {
-  try {
-    final res = await _dio.get('/film/$id');
-    final d = res.data;
-
-    if (d is Map) {
-      if (d['data'] is Map) return Map<String, dynamic>.from(d['data'] as Map);
-      if (d['film'] is Map) return Map<String, dynamic>.from(d['film'] as Map);
-      return Map<String, dynamic>.from(d);
-    }
-    throw ApiException('Format response tidak dikenali', status: res.statusCode, data: d);
-  } on DioException catch (e) {
-    throw _wrap(e);
+  Future<Map<String, dynamic>> filmDetail(dynamic id) async {
+    try {
+      final res = await _dio.get('/film/$id');
+      return _toMap(res.data);
+    } on DioException catch (e) { throw _wrap(e); }
   }
-}
 
   Future<Map<String, dynamic>> createFilm(Map<String, dynamic> body) async {
     try {
       final res = await _dio.post('/film', data: body);
-      return Map<String, dynamic>.from(res.data as Map);
-    } on DioException catch (e) {
-      throw _wrap(e);
-    }
+      return _toMap(res.data);
+    } on DioException catch (e) { throw _wrap(e); }
   }
 
   Future<void> deleteFilm(dynamic id) async {
@@ -126,29 +146,28 @@ Future<Map<String, dynamic>> filmDetail(dynamic id) async {
     on DioException catch (e) { throw _wrap(e); }
   }
 
-  // ---- JADWAL ----
+  // ===== JADWAL =====
   Future<List<dynamic>> jadwalByFilm(int filmId) async {
     try {
-      // pakai endpoint alias yang kita sediakan di api.php
       final res = await _dio.get('/jadwal/by-film/$filmId');
-      return (res.data is List) ? res.data as List : (res.data is Map && res.data['data'] is List ? res.data['data'] as List : []);
-    } on DioException catch (e) {
-      throw _wrap(e);
-    }
+      final d = res.data;
+      if (d is List) return d;
+      if (d is Map && d['data'] is List) return d['data'];
+      return <dynamic>[];
+    } on DioException catch (e) { throw _wrap(e); }
   }
 
-  // ---- KURSI ----
+  // ===== SEATS =====
   Future<List<dynamic>> seatsAvailable(int jadwalId) async {
     try {
-      // pakai alias baru; ada alias lama /jadwal/{jadwalId}/seats juga di api.php
-      final res = await _dio.get('/jadwal/$jadwalId/kursi-tersedia');
-      return (res.data is List) ? res.data as List : (res.data is Map && res.data['data'] is List ? res.data['data'] as List : []);
-    } on DioException catch (e) {
-      throw _wrap(e);
-    }
+      final res = await _dio.get('/jadwal/$jadwalId/seats');
+      if (res.data is List) return res.data as List;
+      if (res.data is Map && res.data['data'] is List) return res.data['data'];
+      return <dynamic>[];
+    } on DioException catch (e) { throw _wrap(e); }
   }
 
-  // ---- CHECKOUT ----
+  // ===== CHECKOUT =====
   Future<Map<String, dynamic>> checkout({
     required int customerId,
     required int jadwalId,
@@ -158,50 +177,23 @@ Future<Map<String, dynamic>> filmDetail(dynamic id) async {
     try {
       final res = await _dio.post('/checkout', data: {
         'customer_id': customerId,
-        'jadwal_id': jadwalId,
-        'kursi_ids': kursiIds,
+        'jadwal_id'  : jadwalId,
+        'kursi_ids'  : kursiIds,
         if (kasirId != null) 'kasir_id': kasirId,
       });
-      return Map<String, dynamic>.from(res.data as Map);
-    } on DioException catch (e) {
-      throw _wrap(e);
-    }
+      return _toMap(res.data);
+    } on DioException catch (e) { throw _wrap(e); }
   }
 
-  // (opsional) Auth bila perlu
-  Future<String> login(String username, String password) async {
-    try {
-      final res = await _dio.post('/auth/login', data: {'username': username, 'password': password});
-      final map = (res.data is Map) ? res.data as Map : {};
-      final token = (map['token'] ?? '').toString();
-      if (token.isEmpty) throw ApiException('Token kosong dari server', status: res.statusCode, data: map);
-      return token;
-    } on DioException catch (e) {
-      if (e.response?.statusCode == 401 || e.response?.statusCode == 404) {
-        throw ApiException('Username atau password salah', status: e.response?.statusCode, data: e.response?.data);
-      }
-      throw _wrap(e);
-    }
-  }
-
-  Future<Map<String, dynamic>> register(String username, String password, {String? name, String? email}) async {
-    try {
-      final res = await _dio.post('/auth/register', data: {
-        'username': username,
-        'password': password,
-        if (name != null && name.isNotEmpty) 'name': name,
-        if (email != null && email.isNotEmpty) 'email': email,
-      });
-      return Map<String, dynamic>.from(res.data as Map);
-    } on DioException catch (e) {
-      throw _wrap(e);
-    }
-  }
-
+  // ===== Utils =====
   ApiException _wrap(DioException e) {
     final status = e.response?.statusCode;
     final data = e.response?.data;
-    final msg = (data is Map && data['message'] is String) ? data['message'] : e.message ?? 'Request error';
+    final msg = (data is Map && data['message'] is String)
+        ? data['message'] : e.message ?? 'Request error';
     return ApiException(msg, status: status, data: data);
   }
+
+  Map<String, dynamic> _toMap(dynamic d) =>
+      (d is Map<String, dynamic>) ? d : Map<String, dynamic>.from(d as Map);
 }

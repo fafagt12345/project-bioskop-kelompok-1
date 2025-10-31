@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'login_page.dart';
+import '../theme/app_theme.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key}); // <-- tambahkan const constructor
@@ -27,9 +28,10 @@ class _SplashScreenState extends State<SplashScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final primary = AppTheme.light.colorScheme.primary;
     return Scaffold(
       body: Container(
-        color: Colors.indigo, // biar nyambung sama theme
+        color: primary, // gunakan warna utama AppTheme
         alignment: Alignment.center,
         child: Column(
           mainAxisSize: MainAxisSize.min,

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../api_service.dart';
 import 'seat_selection_page.dart';
+import '../theme/app_theme.dart';
 
 class JadwalListPage extends StatefulWidget {
   final int filmId;
@@ -37,13 +38,26 @@ class _JadwalListPageState extends State<JadwalListPage> {
   }
 
   String _timeOf(Map<String, dynamic> j) {
-    return (j['tanggal_waktu'] ?? j['waktu'] ?? j['jam_tayang'] ?? j['tanggal'] ?? '-').toString();
+    final tw = j['tanggal_waktu'];
+    if (tw != null && '$tw'.trim().isNotEmpty) return '$tw';
+    final tgl = j['tanggal']?.toString() ?? '';
+    final jam = j['jam_mulai']?.toString() ?? '';
+    if (tgl.isNotEmpty && jam.isNotEmpty) return '$tgl $jam';
+    return tgl.isNotEmpty ? tgl : (jam.isNotEmpty ? jam : '-');
+  }
+
+  int _toInt(dynamic v) {
+    if (v == null) return 0;
+    if (v is int) return v;
+    if (v is double) return v.toInt();
+    return int.tryParse('$v') ?? 0;
   }
 
   @override
   Widget build(BuildContext context) {
+    final primary = AppTheme.light.colorScheme.primary;
     return Scaffold(
-      appBar: AppBar(title: Text('Jadwal • ${widget.filmTitle}')),
+      appBar: AppBar(title: Text('Jadwal • ${widget.filmTitle}'), backgroundColor: primary),
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : _error != null
@@ -54,23 +68,15 @@ class _JadwalListPageState extends State<JadwalListPage> {
                   separatorBuilder: (_, __) => const Divider(height: 1),
                   itemBuilder: (context, i) {
                     final j = _rows[i];
-                    final idRaw = j['jadwal_id'] ?? j['id'] ?? j.values.first;
-                    final jadwalId = (idRaw is int) ? idRaw : (int.tryParse('$idRaw') ?? 0);
+                    final jadwalId = _toInt(j['jadwal_id'] ?? j['id']);
                     final studio = (j['studio_id'] ?? j['studio'] ?? '-').toString();
 
                     return ListTile(
+                      leading: CircleAvatar(backgroundColor: primary, child: const Icon(Icons.event, color: Colors.white)),
                       title: Text(_timeOf(j)),
                       subtitle: Text('Studio: $studio • ID: $jadwalId'),
-                      trailing: const Icon(Icons.chevron_right),
-                      onTap: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => SeatSelectionPage(
-                            jadwalId: jadwalId,
-                            filmTitle: widget.filmTitle,
-                          ),
-                        ),
-                      ),
+                      trailing: Icon(Icons.chevron_right, color: primary),
+                      onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => SeatSelectionPage(jadwalId: jadwalId, filmTitle: widget.filmTitle))),
                     );
                   },
                 ),

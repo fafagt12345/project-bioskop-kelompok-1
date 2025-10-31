@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../api_service.dart';
 import 'checkout_success_page.dart';
+import '../theme/app_theme.dart';
 
 class SeatSelectionPage extends StatefulWidget {
   final int jadwalId;
@@ -89,8 +90,9 @@ class _SeatSelectionPageState extends State<SeatSelectionPage> {
 
   @override
   Widget build(BuildContext context) {
+    final primary = AppTheme.light.colorScheme.primary;
     return Scaffold(
-      appBar: AppBar(title: Text('Pilih Kursi • ${widget.filmTitle}')),
+      appBar: AppBar(title: Text('Pilih Kursi • ${widget.filmTitle}'), backgroundColor: primary),
       bottomNavigationBar: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(12.0),
@@ -98,6 +100,7 @@ class _SeatSelectionPageState extends State<SeatSelectionPage> {
             children: [
               Expanded(child: Text('Dipilih: ${_selected.length}  |  Total: Rp ${_total}')),
               FilledButton.icon(
+                style: ButtonStyle(backgroundColor: MaterialStateProperty.all(primary)),
                 onPressed: _selected.isEmpty ? null : _checkout,
                 icon: const Icon(Icons.payment),
                 label: const Text('Checkout'),
@@ -135,12 +138,12 @@ class _SeatSelectionPageState extends State<SeatSelectionPage> {
                         border: Border.all(
                           color: sold
                               ? Colors.grey.shade300
-                              : selected ? Colors.indigo : Colors.grey.shade400,
+                              : selected ? primary : Colors.grey.shade400,
                           width: 2,
                         ),
                         color: sold
                             ? Colors.grey.shade200
-                            : selected ? Colors.indigo.withOpacity(0.08) : Colors.white,
+                            : selected ? primary.withOpacity(0.12) : Colors.white,
                       ),
                       alignment: Alignment.center,
                       child: Column(
@@ -149,7 +152,7 @@ class _SeatSelectionPageState extends State<SeatSelectionPage> {
                           Text(_label(s),
                               style: TextStyle(
                                 fontWeight: FontWeight.w700,
-                                color: sold ? Colors.grey : (selected ? Colors.indigo : Colors.black),
+                                color: sold ? Colors.grey : (selected ? primary : Colors.black),
                               )),
                           const SizedBox(height: 4),
                           Text('Rp $price',

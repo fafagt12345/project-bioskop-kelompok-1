@@ -1,13 +1,15 @@
 import 'package:flutter/material.dart';
 import 'film_list_page.dart';
+import '../theme/app_theme.dart';
 
 class HomePage extends StatelessWidget {
   const HomePage({super.key});
 
   @override
   Widget build(BuildContext context) {
+    final primary = AppTheme.light.colorScheme.primary;
     return Scaffold(
-      appBar: AppBar(title: const Text('Bioskop • Home')),
+      appBar: AppBar(title: const Text('Bioskop • Home'), backgroundColor: primary),
       body: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -16,10 +18,7 @@ class HomePage extends StatelessWidget {
               icon: Icons.movie_outlined,
               title: 'Daftar Film',
               subtitle: 'Lihat film dari database',
-              onTap: () => Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const FilmListPage()),
-              ),
+              onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const FilmListPage())),
             ),
           ],
         ),
@@ -37,6 +36,7 @@ class _HomeTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final primary = AppTheme.light.colorScheme.primary;
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(16),
@@ -44,11 +44,12 @@ class _HomeTile extends StatelessWidget {
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: Colors.grey.shade300),
+          border: Border.all(color: primary.withOpacity(0.7)),
+          color: primary.withOpacity(0.03),
         ),
         child: Row(
           children: [
-            Icon(icon, size: 36),
+            Icon(icon, size: 36, color: primary),
             const SizedBox(width: 12),
             Expanded(
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
