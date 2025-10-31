@@ -1,156 +1,179 @@
-import 'dart:async';
 import 'package:flutter/material.dart';
 import '../api_service.dart';
-import 'film_detail_page.dart';
 import '../theme/app_theme.dart';
+import 'film_form_page.dart'; // <-- PENTING: import form
+import 'film_detail_page.dart'; // opsional: untuk lihat detail
 
 class FilmListPage extends StatefulWidget {
   const FilmListPage({super.key});
+
   @override
   State<FilmListPage> createState() => _FilmListPageState();
 }
 
 class _FilmListPageState extends State<FilmListPage> {
   final api = ApiService();
-  final _search = TextEditingController();
-  bool _loading = false;
-  List<dynamic> _items = [];
-  Timer? _debounce;
 
-  // helper untuk memilih asset cover berdasarkan judul / field poster
-  String? _assetForFilm(Map<String, dynamic> f) {
-    final title = (f['judul'] ?? f['title'] ?? '').toString().toLowerCase();
-    if (title.contains('avangers') || title.contains('avengers') || title.contains('endgame')) return 'assets/Avangers_EndGame.png';
-    if (title.contains('laskar')) return 'assets/LaskarPelangi.png';
-    if (title.contains('stupid') || title.contains('my stupid boss')) return 'assets/MyStupidBoss.png';
-    if (title.contains('pengabdi') || title.contains('setan')) return 'assets/PengabdiSetan.png';
-    if (title.contains('toystory') || title.contains('toy story') || title.contains('toy')) return 'assets/ToyStory_4.png';
-    final poster = f['poster']?.toString();
-    if (poster != null && poster.isNotEmpty) return poster.startsWith('http') ? poster : (poster.startsWith('assets/') ? poster : 'assets/$poster');
-    return null;
-  }
+  bool _loading = true;
+  String? _error;
+  List<Map<String, dynamic>> _items = [];
 
   @override
   void initState() {
     super.initState();
     _load();
-    _search.addListener(_onSearchChanged);
-  }
-
-  @override
-  void dispose() {
-    _search.removeListener(_onSearchChanged);
-    _search.dispose();
-    _debounce?.cancel();
-    super.dispose();
-  }
-
-  void _onSearchChanged() {
-    if (_debounce?.isActive ?? false) _debounce!.cancel();
-    _debounce = Timer(const Duration(milliseconds: 500), () {
-      _load();
-    });
   }
 
   Future<void> _load() async {
-    setState(() => _loading = true);
+    setState(() { _loading = true; _error = null; });
     try {
-      final page = await api.films(
-        perPage: 50,
-        search: _search.text.trim().isEmpty ? null : _search.text.trim(),
-      );
-      setState(() => _items = page.data);
+      final res = await api.films(perPage: 200);
+      final list = res.data.map<Map<String, dynamic>>((e) => Map<String, dynamic>.from(e as Map)).toList();
+      setState(() => _items = list);
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Load error: $e')));
-      }
+      setState(() => _error = 'Gagal memuat film: $e');
     } finally {
       if (mounted) setState(() => _loading = false);
     }
   }
 
-  int _toInt(dynamic v) {
-    if (v == null) return 0;
-    if (v is int) return v;
-    if (v is double) return v.toInt();
-    return int.tryParse('$v') ?? 0;
+  dynamic _filmIdOf(Map<String, dynamic> m) {
+    final raw = m['film_id'] ?? m['id'] ?? m['ID'];
+    if (raw is int) return raw;
+    return int.tryParse('$raw');
+  }
+
+  String _titleOf(Map<String, dynamic> m) {
+    return (m['judul'] ?? m['title'] ?? 'Tanpa Judul').toString();
+  }
+
+  String _subtitleOf(Map<String, dynamic> m) {
+    final genreName = (m['genre_name'] ?? m['genre_nama'] ?? m['genre'])?.toString();
+    final genreId   = (m['genre_id'] ?? m['id_genre']);
+    final durasi    = m['durasi']?.toString();
+    final g = (genreName != null && genreName.isNotEmpty)
+        ? 'Genre: $genreName'
+        : (genreId != null ? 'Genre ID: $genreId' : 'Genre: -');
+    final d = (durasi != null && durasi.isNotEmpty) ? ' • $durasi m' : '';
+    return '$g$d';
+  }
+
+  Future<void> _create() async {
+    final saved = await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(builder: (_) => FilmFormPage()),
+    );
+    if (saved == true) _load();
+  }
+
+  Future<void> _edit(Map<String, dynamic> film) async {
+    final id = _filmIdOf(film);
+    if (id == null) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('ID film tidak valid')));
+      return;
+    }
+    final saved = await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => FilmFormPage(
+          filmId: id as int,
+          initial: Map<String, dynamic>.from(film),
+        ),
+      ),
+    );
+    if (saved == true) _load();
+  }
+
+  Future<void> _delete(Map<String, dynamic> film) async {
+    final id = _filmIdOf(film);
+    if (id == null) {
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('ID film tidak valid')));
+      return;
+    }
+    final sure = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Hapus Film'),
+        content: Text('Yakin ingin menghapus "${_titleOf(film)}"?'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Batal')),
+          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Hapus')),
+        ],
+      ),
+    ) ?? false;
+
+    if (!sure) return;
+
+    try {
+      await api.deleteFilm(id);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Film dihapus')));
+      _load();
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Gagal hapus: $e')));
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     final primary = AppTheme.light.colorScheme.primary;
     return Scaffold(
-      appBar: AppBar(title: const Text('Daftar Film'), backgroundColor: primary),
-      backgroundColor: primary.withOpacity(0.04),
-      body: Padding(
-        padding: const EdgeInsets.all(12.0),
-        child: Column(
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: _search,
-                    decoration: const InputDecoration(
-                      hintText: 'Cari judul...',
-                      prefixIcon: Icon(Icons.search),
-                    ),
+      appBar: AppBar(
+        title: const Text('Daftar Film'),
+        backgroundColor: primary,
+      ),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: _create,
+        backgroundColor: primary,
+        icon: const Icon(Icons.add),
+        label: const Text('Tambah'),
+      ),
+      body: _loading
+          ? const Center(child: CircularProgressIndicator())
+          : _error != null
+              ? Center(child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Text(_error!, textAlign: TextAlign.center),
+                ))
+              : RefreshIndicator(
+                  onRefresh: _load,
+                  child: ListView.separated(
+                    padding: const EdgeInsets.fromLTRB(12, 8, 12, 96),
+                    itemCount: _items.length,
+                    separatorBuilder: (_, __) => const Divider(height: 1),
+                    itemBuilder: (context, i) {
+                      final film = _items[i];
+                      return ListTile(
+                        title: Text(_titleOf(film), style: const TextStyle(fontWeight: FontWeight.w600)),
+                        subtitle: Text(_subtitleOf(film)),
+                        onTap: () {
+                          final id = _filmIdOf(film);
+                          if (id != null) {
+                            Navigator.push(context, MaterialPageRoute(
+                              builder: (_) => FilmDetailPage(filmId: id as int, initial: film),
+                            ));
+                          }
+                        },
+                        trailing: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            IconButton(
+                              tooltip: 'Edit',
+                              icon: const Icon(Icons.edit),
+                              onPressed: () => _edit(film),
+                            ),
+                            IconButton(
+                              tooltip: 'Hapus',
+                              icon: const Icon(Icons.delete_outline),
+                              onPressed: () => _delete(film),
+                            ),
+                          ],
+                        ),
+                      );
+                    },
                   ),
                 ),
-                const SizedBox(width: 8),
-                ElevatedButton.icon(onPressed: _load, icon: const Icon(Icons.refresh), label: const Text('Reload')),
-              ],
-            ),
-            const SizedBox(height: 12),
-            Expanded(
-              child: _loading
-                  ? const Center(child: CircularProgressIndicator())
-                  : ListView.separated(
-                      itemCount: _items.length,
-                      separatorBuilder: (_, __) => const Divider(height: 1),
-                      itemBuilder: (context, i) {
-                        final f = Map<String, dynamic>.from(_items[i] as Map);
-                        final title = (f['judul'] ?? f['title'] ?? 'Tanpa Judul').toString();
-                        final sinopsis = (f['sinopsis'] ?? '').toString();
-                        final filmId = _toInt(f['film_id'] ?? f['id']);
-                        final cover = _assetForFilm(f);
-                        Widget leading;
-                        if (cover != null) {
-                          final isNetwork = cover.startsWith('http://') || cover.startsWith('https://');
-                          leading = ClipRRect(
-                            borderRadius: BorderRadius.circular(6), // lebih kecil untuk thumbnail kecil
-                            child: SizedBox(
-                              width: 40,  // lebih kecil dari 50
-                              height: 60, // lebih kecil dari 75, tetap rasio 2:3
-                              child: isNetwork
-                                  ? Image.network(
-                                      cover,
-                                      fit: BoxFit.cover,
-                                      errorBuilder: (_, __, ___) => const SizedBox.shrink(),
-                                    )
-                                  : Image.asset(
-                                      cover,
-                                      fit: BoxFit.cover,
-                                      errorBuilder: (_, __, ___) => const SizedBox.shrink(),
-                                    ),
-                            ),
-                          );
-                        } else {
-                          leading = CircleAvatar(backgroundColor: primary, child: const Icon(Icons.movie, color: Colors.white));
-                        }
-
-                        return ListTile(
-                          leading: leading,
-                          title: Text(title),
-                          subtitle: Text(sinopsis, maxLines: 2, overflow: TextOverflow.ellipsis),
-                          onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => FilmDetailPage(filmId: filmId, initial: f))),
-                        );
-                      },
-                    ),
-            ),
-          ],
-        ),
-      ),
     );
   }
 }

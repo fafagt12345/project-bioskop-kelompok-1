@@ -24,7 +24,6 @@ class _FilmDetailPageState extends State<FilmDetailPage> {
     super.initState();
     if (widget.initial != null) {
       _film = Map<String, dynamic>.from(widget.initial!);
-      // kalau initial sudah bawa nama genre, pakai duluan
       _genreName = (_film!['genre_name'] ??
                     _film!['genre_nama'] ??
                     _film!['genre'])?.toString();
@@ -37,15 +36,13 @@ class _FilmDetailPageState extends State<FilmDetailPage> {
     try {
       final data = await api.filmDetail(widget.filmId);
 
-      // 1) Coba nama genre dari payload detail (kalau controller sudah join)
+      // 1) nama genre dari payload (jika controller sudah join)
       String? gName = (data['genre_name'] ?? data['genre_nama'] ?? data['genre'])?.toString();
 
-      // 2) Jika belum ada, cari ID genre dari berbagai kemungkinan kunci
+      // 2) kalau belum ada, ambil dari id
       if (gName == null || gName.isEmpty) {
         final rawId = data['genre_id'] ?? data['id_genre'] ?? data['genreId'];
         final gid = rawId is int ? rawId : int.tryParse('$rawId');
-
-        // 3) Ambil nama genre via cache / fallback GET /genres/{id}
         gName = await api.genreNameById(gid);
       }
 
@@ -161,8 +158,7 @@ class _FilmDetailPageState extends State<FilmDetailPage> {
                                 runSpacing: 8,
                                 children: [
                                   _Chip(label: 'Durasi: ${durasi}m'),
-                                  if (_genreName != null)
-                                    _Chip(label: 'Genre: ${_genreName!}'),
+                                  if (_genreName != null) _Chip(label: 'Genre: ${_genreName!}'),
                                 ],
                               ),
                               const SizedBox(height: 16),

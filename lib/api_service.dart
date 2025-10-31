@@ -57,7 +57,6 @@ class ApiService {
   final String baseUrl;
   String? _token;
 
-  // cache genre: id -> name
   Map<int, String>? _genreCache;
 
   static String suggestBaseUrl() {
@@ -185,15 +184,110 @@ class ApiService {
     }
   }
 
-  Future<void> deleteFilm(dynamic id) async {
+  // ✅ Update film
+  Future<Map<String, dynamic>> updateFilm(int id, Map<String, dynamic> body) async {
     try {
-      await _dio.delete('/film/$id');
+      final res = await _dio.put('/film/$id', data: body);
+      return _toMap(res.data);
     } on DioException catch (e) {
       throw _wrap(e);
     }
   }
 
-  // ===== JADWAL =====
+  /// Hapus film — default force=true (hapus relasi terkait)
+  Future<void> deleteFilm(dynamic id, {bool force = true}) async {
+    try {
+      await _dio.delete('/film/$id', queryParameters: {'force': force ? 1 : 0});
+    } on DioException catch (e) {
+      throw _wrap(e);
+    }
+  }
+
+  // ===== JADWAL (tambahan CRUD front-end) =====
+  Future<List<Map<String, dynamic>>> jadwalList({int? filmId}) async {
+    final qp = <String, dynamic>{ if (filmId != null) 'film_id': filmId };
+    final res = await _dio.get('/jadwal', queryParameters: qp);
+    final raw = res.data;
+    final list = (raw is List)
+        ? raw
+        : (raw is Map && raw['data'] is List ? raw['data'] : const []);
+    return list.map<Map<String, dynamic>>((e) => Map<String, dynamic>.from(e as Map)).toList();
+  }
+
+  Future<Map<String, dynamic>> jadwalShow(int id) async {
+    final res = await _dio.get('/jadwal/$id');
+    return Map<String, dynamic>.from(res.data as Map);
+  }
+
+  Future<Map<String, dynamic>> jadwalCreate({
+    required int filmId,
+    required int studioId,
+    required String tanggal,      // 'YYYY-MM-DD'
+    required String jamMulai,     // 'HH:mm:ss'
+    required String jamSelesai,   // 'HH:mm:ss'
+  }) async {
+    final res = await _dio.post('/jadwal', data: {
+      'film_id': filmId,
+      'studio_id': studioId,
+      'tanggal': tanggal,
+      'jam_mulai': jamMulai,
+      'jam_selesai': jamSelesai,
+    });
+    return Map<String, dynamic>.from(res.data as Map);
+  }
+
+  Future<Map<String, dynamic>> jadwalUpdate(
+    int id, {
+    required int filmId,
+    required int studioId,
+    required String tanggal,
+    required String jamMulai,
+    required String jamSelesai,
+  }) async {
+    final res = await _dio.put('/jadwal/$id', data: {
+      'film_id': filmId,
+      'studio_id': studioId,
+      'tanggal': tanggal,
+      'jam_mulai': jamMulai,
+      'jam_selesai': jamSelesai,
+    });
+    return Map<String, dynamic>.from(res.data as Map);
+  }
+
+  /// Hapus jadwal — default force=true (hapus tiket & detail-transaksi terkait)
+  Future<void> jadwalDelete(int id, {bool force = true}) async {
+    try {
+      await _dio.delete('/jadwal/$id', queryParameters: {'force': force ? 1 : 0});
+    } on DioException catch (e) {
+      throw _wrap(e);
+    }
+  }
+
+  // ===== STUDIO LIST =====
+  Future<List<Map<String, dynamic>>> studiosList() async {
+    Future<Response> _try(String path) => _dio.get(path);
+
+    Response res;
+    try {
+      res = await _try('/studio');
+    } on DioException {
+      res = await _try('/studios'); // fallback
+    }
+
+    final raw = res.data;
+    final list = (raw is List)
+        ? raw
+        : (raw is Map && raw['data'] is List ? raw['data'] : const []);
+    return list.map<Map<String, dynamic>>((e) {
+      final m = Map<String, dynamic>.from(e as Map);
+      final rawId = m['studio_id'] ?? m['id'];
+      final id = rawId is int ? rawId : int.tryParse('$rawId') ?? -1;
+      final nama = (m['nama_studio'] ?? m['nama'] ?? m['name'] ?? 'Studio $id').toString();
+      return {'id': id, 'nama': nama, ...m};
+    }).toList();
+  }
+
+  // ===== JADWAL (lama) – by film untuk seat selection =====
   Future<List<dynamic>> jadwalByFilm(int filmId) async {
     try {
       final res = await _dio.get('/jadwal/by-film/$filmId');
@@ -206,19 +300,17 @@ class ApiService {
     }
   }
 
-   // ===== SEATS =====
+  // ===== SEATS =====
   Future<List<dynamic>> seatsAvailable(int jadwalId) async {
     try {
       final res = await _dio.get('/jadwal/$jadwalId/seats');
 
-      // Ambil list mentah dari server
       final raw = (res.data is List)
           ? (res.data as List)
           : (res.data is Map && res.data['data'] is List
               ? (res.data['data'] as List)
               : const <dynamic>[]);
 
-      // Normalisasi agar harga selalu numerik dan punya alias
       final normalized = raw.map((e) {
         final m = Map<String, dynamic>.from(e as Map);
 
@@ -227,7 +319,6 @@ class ApiService {
         if (v is num) {
           hargaNum = v;
         } else {
-          // coba parse dari string "50000.00"
           final asInt = int.tryParse('$v');
           if (asInt != null) {
             hargaNum = asInt;
@@ -237,7 +328,6 @@ class ApiService {
           }
         }
 
-        // fallback ke price dari server jika ada
         if ((hargaNum == 0) && m.containsKey('price')) {
           final pv = m['price'];
           if (pv is num) hargaNum = pv;
@@ -251,7 +341,6 @@ class ApiService {
         m['price']     = hargaNum;
         m['harga_int'] = hargaNum;
 
-        // rapikan status
         final st = (m['status'] ?? 'tersedia').toString().toLowerCase();
         m['status'] = (st == 'sold' || st == 'terjual') ? 'terjual' : 'tersedia';
 
@@ -263,7 +352,6 @@ class ApiService {
       throw _wrap(e);
     }
   }
-
 
   // ===== CHECKOUT =====
   Future<Map<String, dynamic>> checkout({
@@ -285,7 +373,28 @@ class ApiService {
     }
   }
 
-  // ===== GENRES (cache + fallback detail; tidak melempar ketika list gagal) =====
+  // ===== GENRES =====
+  Future<List<Map<String, dynamic>>> genresList() async {
+    try {
+      final res = await _dio.get('/genres');
+      final raw = res.data;
+      final list = (raw is List)
+          ? raw
+          : (raw is Map && raw['data'] is List ? raw['data'] : const []);
+      return list
+          .map<Map<String, dynamic>>((e) {
+            final m = Map<String, dynamic>.from(e as Map);
+            final rawId = m['id'] ?? m['genre_id'] ?? m['id_genre'];
+            final id = rawId is int ? rawId : int.tryParse('$rawId') ?? -1;
+            final nama = (m['nama'] ?? m['nama_genre'] ?? m['name'] ?? m['judul'] ?? '').toString();
+            return {'id': id, 'nama': nama, ...m};
+          })
+          .toList();
+    } on DioException catch (e) {
+      throw _wrap(e);
+    }
+  }
+
   Future<Map<int, String>> _ensureGenres() async {
     if (_genreCache != null) return _genreCache!;
     final map = <int, String>{};
@@ -306,9 +415,7 @@ class ApiService {
           map[id] = name;
         }
       }
-    } catch (_) {
-      // Jangan lempar error—biarkan kosong, nanti fallback /genres/{id}
-    }
+    } catch (_) {}
     _genreCache = map;
     return map;
   }
@@ -316,14 +423,12 @@ class ApiService {
   Future<String?> genreNameById(int? id) async {
     if (id == null) return null;
 
-    // 1) coba cache/list
     try {
       final map = await _ensureGenres();
       final fromCache = map[id];
       if (fromCache != null && fromCache.isNotEmpty) return fromCache;
     } catch (_) {}
 
-    // 2) fallback GET /genres/{id}
     try {
       final res = await _dio.get('/genres/$id');
       final m = _toMap(res.data);

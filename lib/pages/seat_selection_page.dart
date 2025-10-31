@@ -6,10 +6,13 @@ import '../theme/app_theme.dart';
 class SeatSelectionPage extends StatefulWidget {
   final int jadwalId;
   final String filmTitle;
+  final int? studioId; // ✅ dipakai saat kursi kosong untuk generate virtual
+
   const SeatSelectionPage({
     super.key,
     required this.jadwalId,
     required this.filmTitle,
+    this.studioId,
   });
 
   @override
@@ -22,7 +25,7 @@ class _SeatSelectionPageState extends State<SeatSelectionPage> {
   bool _loading = true;
   String? _error;
 
-  // data kursi dari API
+  // data kursi dari API (atau virtual)
   List<Map<String, dynamic>> _seats = [];
 
   // lookup & pilihan
@@ -39,43 +42,33 @@ class _SeatSelectionPageState extends State<SeatSelectionPage> {
     if (v == null) return 0;
     if (v is int) return v;
     if (v is double) return v.round();
-    // tangani "50000.00"
-    final s = v.toString();
-    final dot = s.indexOf('.');
-    final base = dot >= 0 ? s.substring(0, dot) : s;
-    return int.tryParse(base) ?? (double.tryParse(s)?.round() ?? 0);
+    return int.tryParse(v.toString().split('.').first) ??
+        (double.tryParse('$v')?.round() ?? 0);
   }
 
-  String _formatRp(dynamic v) {
-    final n = _asInt(v);
-    final s = n.toString();
-    final b = StringBuffer();
-    for (int i = 0; i < s.length; i++) {
-      b.write(s[i]);
-      final left = s.length - i - 1;
-      if (left > 0 && left % 3 == 0) b.write('.');
+  void _rebuildIndex(List<Map<String, dynamic>> rows) {
+    _byId.clear();
+    for (final m in rows) {
+      final id = (m['kursi_id'] is num)
+          ? (m['kursi_id'] as num).toInt()
+          : int.tryParse('${m['kursi_id']}') ?? 0;
+      if (id != 0) _byId[id] = m;
     }
-    return b.toString();
   }
 
   Future<void> _load() async {
-    setState(() {
-      _loading = true;
-      _error = null;
-    });
+    setState(() { _loading = true; _error = null; _selected.clear(); });
     try {
       final rows = await api.seatsAvailable(widget.jadwalId);
       final parsed = rows.map((e) => Map<String, dynamic>.from(e as Map)).toList();
 
-      _byId.clear();
-      for (final m in parsed) {
-        final id = (m['kursi_id'] is num)
-            ? (m['kursi_id'] as num).toInt()
-            : int.tryParse('${m['kursi_id']}') ?? 0;
-        if (id > 0) _byId[id] = m;
+      if (parsed.isEmpty && widget.studioId != null) {
+        // ✅ tidak ada kursi: tawarkan generate 15 kursi
+        await _offerGenerateSeats();
+      } else {
+        _rebuildIndex(parsed);
+        setState(() => _seats = parsed);
       }
-
-      setState(() => _seats = parsed);
     } catch (e) {
       setState(() => _error = 'Gagal load kursi: $e');
     } finally {
@@ -83,16 +76,90 @@ class _SeatSelectionPageState extends State<SeatSelectionPage> {
     }
   }
 
-  /// Selalu prioritaskan nomor_kursi (atau nama_kursi dari API),
-  /// JANGAN jatuh ke kursi_id agar tidak tampil angka ID.
+  // ==== Virtual Seat Generator (saat kursi kosong) ====
+  String _studioLetter(int sid) {
+    final base = 'A'.codeUnitAt(0);
+    final idx = sid - 1;
+    final code = base + (idx < 0 ? 0 : idx);
+    return String.fromCharCode(code.clamp(base, 'Z'.codeUnitAt(0)));
+  }
+
+  int _defaultPrice(int sid) {
+    const map = {1: 50000, 2: 100000, 3: 75000};
+    return map[sid] ?? 50000;
+  }
+
+  Future<void> _offerGenerateSeats() async {
+    final sid = widget.studioId!;
+    final expectedLetter = _studioLetter(sid);
+    String chosen = expectedLetter;
+
+    await showDialog<void>(
+      context: context,
+      builder: (ctx) {
+        return AlertDialog(
+          title: const Text('Generate Kursi'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text('Belum ada kursi untuk jadwal ini.\n'
+                  'Pilih baris kursi (A–C), lalu kami tampilkan 15 kursi.'),
+              const SizedBox(height: 12),
+              Wrap(
+                spacing: 8,
+                children: ['A','B','C'].map((letter) {
+                  final selected = chosen == letter;
+                  return ChoiceChip(
+                    label: Text(letter),
+                    selected: selected,
+                    onSelected: (_) { setState(() => chosen = letter); },
+                  );
+                }).toList(),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Catatan: Studio ini default baris $expectedLetter. '
+                'Saat disimpan, label kursi akan mengikuti studio.',
+                style: const TextStyle(fontSize: 12, color: Colors.black54),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Batal')),
+            FilledButton(onPressed: () => Navigator.pop(ctx), child: const Text('Lanjut')),
+          ],
+        );
+      },
+    );
+
+    // Tetap pakai expectedLetter agar konsisten dengan backend
+    final prefix = expectedLetter;
+    final price = _defaultPrice(sid);
+
+    final virtual = List<Map<String, dynamic>>.generate(15, (i) {
+      final nomor = i + 1;
+      final label = '$prefix$nomor';
+      final negativeId = -(sid * 1000 + nomor); // akan diubah backend menjadi kursi real
+      return {
+        'kursi_id': negativeId,
+        'studio_id': sid,
+        'nama_kursi': label,
+        'status': 'tersedia',
+        'harga': price,
+      };
+    });
+
+    _rebuildIndex(virtual);
+    setState(() => _seats = virtual);
+  }
+
   String _labelOf(Map<String, dynamic> s) {
-    final label = (s['nomor_kursi'] ?? s['nama_kursi'] ?? s['label'])?.toString();
-    return (label == null || label.isEmpty) ? '-' : label;
+    return (s['nama_kursi'] ?? s['nomor_kursi'] ?? s['label'] ?? s['kursi_id'] ?? '').toString();
   }
 
   String _labelById(int id) {
     final m = _byId[id];
-    if (m == null) return '-';
+    if (m == null) return 'S$id';
     return _labelOf(m);
   }
 
@@ -116,10 +183,7 @@ class _SeatSelectionPageState extends State<SeatSelectionPage> {
 
   String get _selectedLabels {
     if (_selected.isEmpty) return '-';
-    final labels = _selected.map(_labelById).toList();
-    // optional: urutkan biar rapi (A1, A2, ...)
-    labels.sort((a, b) => a.compareTo(b));
-    return labels.join(', ');
+    return _selected.map(_labelById).join(', ');
   }
 
   Future<void> _checkout() async {
@@ -133,13 +197,11 @@ class _SeatSelectionPageState extends State<SeatSelectionPage> {
         kursiIds: _selected.toList(),
       );
 
-      // ------ Pastikan label kursi ada di payload ke halaman sukses ------
-      // 1) coba dari respons backend (kalau sudah kirim)
+      // Fallback label kursi supaya tidak "ID" lagi
       String labels = '';
       final rawList = res['kursi'];
       if (rawList is List && rawList.isNotEmpty) {
-        final items = rawList
-            .map((e) => (e is Map ? (e['nomor_kursi'] ?? e['nama_kursi']) : null))
+        final items = rawList.map((e) => (e is Map ? e['nomor_kursi'] : null))
             .where((x) => x != null && x.toString().isNotEmpty)
             .map((x) => x.toString())
             .toList();
@@ -148,29 +210,25 @@ class _SeatSelectionPageState extends State<SeatSelectionPage> {
       if (labels.isEmpty) {
         labels = (res['kursi_labels'] ?? '').toString();
       }
-      // 2) fallback: pakai label lokal dari pilihan
       if (labels.isEmpty) {
         labels = _selectedLabels;
       }
 
       final total = res['total_harga'] ?? _total;
 
-      // Susun daftar kursi final (kalau backend tidak kirim)
-      final kursiList = (res['kursi'] is List && (res['kursi'] as List).isNotEmpty)
-          ? (res['kursi'] as List)
-          : _selected
-              .map((id) => {
-                    'kursi_id': id,
-                    'nomor_kursi': _labelById(id),
-                    'harga': _priceOfId(id),
-                  })
-              .toList();
-
       final data = {
         ...res,
         'kursi_labels': labels,
         'total_harga': total,
-        'kursi': kursiList,
+        'kursi': (res['kursi'] is List && (res['kursi'] as List).isNotEmpty)
+            ? res['kursi']
+            : _selected
+                .map((id) => {
+                      'kursi_id': id,
+                      'nomor_kursi': _labelById(id),
+                      'harga': _priceOfId(id),
+                    })
+                .toList(),
       };
 
       if (!mounted) return;
@@ -202,23 +260,14 @@ class _SeatSelectionPageState extends State<SeatSelectionPage> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // ringkasan kursi terpilih (pakai label, bukan ID)
-              Text(
-                'Kursi: $_selectedLabels',
-                style: const TextStyle(fontWeight: FontWeight.w600),
-              ),
+              Text('Kursi: $_selectedLabels',
+                  style: const TextStyle(fontWeight: FontWeight.w600)),
               const SizedBox(height: 6),
               Row(
                 children: [
-                  Expanded(
-                    child: Text(
-                      'Dipilih: ${_selected.length}  |  Total: Rp ${_formatRp(_total)}',
-                    ),
-                  ),
+                  Expanded(child: Text('Dipilih: ${_selected.length}  |  Total: Rp $_total')),
                   FilledButton.icon(
-                    style: ButtonStyle(
-                      backgroundColor: MaterialStateProperty.all(primary),
-                    ),
+                    style: ButtonStyle(backgroundColor: MaterialStateProperty.all(primary)),
                     onPressed: _selected.isEmpty ? null : _checkout,
                     icon: const Icon(Icons.payment),
                     label: const Text('Checkout'),
@@ -232,85 +281,93 @@ class _SeatSelectionPageState extends State<SeatSelectionPage> {
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : _error != null
-              ? Center(
-                  child: Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Text(_error!, textAlign: TextAlign.center),
-                  ),
-                )
-              : SingleChildScrollView(
-                  padding: const EdgeInsets.all(12),
-                  child: Wrap(
-                    spacing: 10,
-                    runSpacing: 10,
-                    children: _seats.map((s) {
-                      final kursiId = (s['kursi_id'] is num)
-                          ? (s['kursi_id'] as num).toInt()
-                          : int.tryParse('${s['kursi_id']}') ?? 0;
-                      final sold = _isSold(s);
-                      final selected = _selected.contains(kursiId);
-                      final price = _asInt(s['harga']);
-                      final label = _labelOf(s);
-
-                      return InkWell(
-                        onTap: sold
-                            ? null
-                            : () {
-                                setState(() {
-                                  if (selected) {
-                                    _selected.remove(kursiId);
-                                  } else {
-                                    _selected.add(kursiId);
-                                  }
-                                });
-                              },
-                        child: Container(
-                          width: 90, // tetap kecil, sesuai permintaan
-                          height: 70,
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(
-                              color: sold
-                                  ? Colors.grey.shade300
-                                  : (selected ? primary : Colors.grey.shade400),
-                              width: 2,
-                            ),
-                            color: sold
-                                ? Colors.grey.shade200
-                                : (selected
-                                    ? primary.withOpacity(0.12)
-                                    : Colors.white),
-                          ),
-                          alignment: Alignment.center,
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Text(
-                                label,
-                                overflow: TextOverflow.ellipsis,
-                                style: TextStyle(
-                                  fontWeight: FontWeight.w700,
-                                  color: sold
-                                      ? Colors.grey
-                                      : (selected ? primary : Colors.black87),
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                'Rp ${_formatRp(price)}',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color:
-                                      sold ? Colors.grey : Colors.black87,
-                                ),
-                              ),
-                            ],
-                          ),
+              ? Center(child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Text(_error!, textAlign: TextAlign.center),
+                ))
+              : (_seats.isEmpty
+                  ? Center(
+                      child: Padding(
+                        padding: const EdgeInsets.all(16),
+                        child: Text(
+                          widget.studioId == null
+                              ? 'Belum ada kursi untuk jadwal ini.\nStudioId tidak diketahui, silakan tambah kursi di server.'
+                              : 'Belum ada kursi.\nTekan kembali lalu masuk lagi, atau gunakan tombol Checkout setelah memilih kursi virtual.',
+                          textAlign: TextAlign.center,
                         ),
-                      );
-                    }).toList(),
-                  ),
-                ),
+                      ),
+                    )
+                  : SingleChildScrollView(
+                      padding: const EdgeInsets.all(12),
+                      child: Wrap(
+                        spacing: 10,
+                        runSpacing: 10,
+                        children: _seats.map((s) {
+                          final kursiId = (s['kursi_id'] is num)
+                              ? (s['kursi_id'] as num).toInt()
+                              : int.tryParse('${s['kursi_id']}') ?? 0;
+                          final sold = _isSold(s);
+                          final selected = _selected.contains(kursiId);
+                          final price = _asInt(s['harga']);
+                          final label = _labelOf(s);
+
+                          return InkWell(
+                            onTap: sold
+                                ? null
+                                : () {
+                                    setState(() {
+                                      if (selected) {
+                                        _selected.remove(kursiId);
+                                      } else {
+                                        _selected.add(kursiId);
+                                      }
+                                    });
+                                  },
+                            child: Container(
+                              width: 90, // ✅ ukuran tetap
+                              height: 70, // ✅ ukuran tetap
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(
+                                  color: sold
+                                      ? Colors.grey.shade300
+                                      : (selected ? primary : Colors.grey.shade400),
+                                  width: 2,
+                                ),
+                                color: sold
+                                    ? Colors.grey.shade200
+                                    : (selected
+                                        ? primary.withOpacity(0.12)
+                                        : Colors.white),
+                              ),
+                              alignment: Alignment.center,
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Text(
+                                    label,
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.w700,
+                                      color: sold
+                                          ? Colors.grey
+                                          : (selected ? primary : Colors.black87),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    'Rp $price',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: sold ? Colors.grey : Colors.black87,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          );
+                        }).toList(),
+                      ),
+                    )),
     );
   }
 }
