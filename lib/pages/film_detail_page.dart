@@ -17,11 +17,18 @@ class _FilmDetailPageState extends State<FilmDetailPage> {
   bool _loading = true;
   Map<String, dynamic>? _film;
   String? _error;
+  String? _genreName;
 
   @override
   void initState() {
     super.initState();
-    if (widget.initial != null) _film = Map<String, dynamic>.from(widget.initial!);
+    if (widget.initial != null) {
+      _film = Map<String, dynamic>.from(widget.initial!);
+      // kalau initial sudah bawa nama genre, pakai duluan
+      _genreName = (_film!['genre_name'] ??
+                    _film!['genre_nama'] ??
+                    _film!['genre'])?.toString();
+    }
     _load();
   }
 
@@ -29,11 +36,30 @@ class _FilmDetailPageState extends State<FilmDetailPage> {
     setState(() { _loading = true; _error = null; });
     try {
       final data = await api.filmDetail(widget.filmId);
-      setState(() => _film = data);
+
+      // 1) Coba nama genre dari payload detail (kalau controller sudah join)
+      String? gName = (data['genre_name'] ?? data['genre_nama'] ?? data['genre'])?.toString();
+
+      // 2) Jika belum ada, cari ID genre dari berbagai kemungkinan kunci
+      if (gName == null || gName.isEmpty) {
+        final rawId = data['genre_id'] ?? data['id_genre'] ?? data['genreId'];
+        final gid = rawId is int ? rawId : int.tryParse('$rawId');
+
+        // 3) Ambil nama genre via cache / fallback GET /genres/{id}
+        gName = await api.genreNameById(gid);
+      }
+
+      if (!mounted) return;
+      setState(() {
+        _film = data;
+        _genreName = (gName == null || gName.isEmpty) ? null : gName;
+      });
     } catch (e) {
+      if (!mounted) return;
       setState(() => _error = '$e');
     } finally {
-      if (mounted) setState(() => _loading = false);
+      if (!mounted) return;
+      setState(() => _loading = false);
     }
   }
 
@@ -85,7 +111,6 @@ class _FilmDetailPageState extends State<FilmDetailPage> {
     final title = (_film?['judul'] ?? _film?['title'] ?? 'Detail Film').toString();
     final sinopsis = (_film?['sinopsis'] ?? '').toString();
     final durasi = _film?['durasi']?.toString() ?? '-';
-    final genreId = _film?['genre_id']?.toString() ?? '-';
     final cover = _assetForFilm(_film);
 
     return Scaffold(
@@ -95,9 +120,16 @@ class _FilmDetailPageState extends State<FilmDetailPage> {
           padding: const EdgeInsets.all(12),
           child: FilledButton.icon(
             style: ButtonStyle(backgroundColor: MaterialStateProperty.all(primary)),
-            onPressed: _film == null ? null : () {
-              Navigator.push(context, MaterialPageRoute(builder: (_) => JadwalListPage(filmId: widget.filmId, filmTitle: title)));
-            },
+            onPressed: _film == null
+                ? null
+                : () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => JadwalListPage(filmId: widget.filmId, filmTitle: title),
+                      ),
+                    );
+                  },
             icon: const Icon(Icons.event),
             label: const Text('Lihat Jadwal'),
           ),
@@ -124,11 +156,15 @@ class _FilmDetailPageState extends State<FilmDetailPage> {
                             children: [
                               Text(title, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700)),
                               const SizedBox(height: 8),
-                              Row(children: [
-                                _Chip(label: 'Durasi: ${durasi}m'),
-                                const SizedBox(width: 8),
-                                _Chip(label: 'Genre ID: $genreId'),
-                              ]),
+                              Wrap(
+                                spacing: 8,
+                                runSpacing: 8,
+                                children: [
+                                  _Chip(label: 'Durasi: ${durasi}m'),
+                                  if (_genreName != null)
+                                    _Chip(label: 'Genre: ${_genreName!}'),
+                                ],
+                              ),
                               const SizedBox(height: 16),
                               const Text('Sinopsis', style: TextStyle(fontWeight: FontWeight.w600)),
                               const SizedBox(height: 8),

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import '../api_service.dart';
 import 'film_detail_page.dart';
@@ -14,6 +15,7 @@ class _FilmListPageState extends State<FilmListPage> {
   final _search = TextEditingController();
   bool _loading = false;
   List<dynamic> _items = [];
+  Timer? _debounce;
 
   // helper untuk memilih asset cover berdasarkan judul / field poster
   String? _assetForFilm(Map<String, dynamic> f) {
@@ -32,6 +34,22 @@ class _FilmListPageState extends State<FilmListPage> {
   void initState() {
     super.initState();
     _load();
+    _search.addListener(_onSearchChanged);
+  }
+
+  @override
+  void dispose() {
+    _search.removeListener(_onSearchChanged);
+    _search.dispose();
+    _debounce?.cancel();
+    super.dispose();
+  }
+
+  void _onSearchChanged() {
+    if (_debounce?.isActive ?? false) _debounce!.cancel();
+    _debounce = Timer(const Duration(milliseconds: 500), () {
+      _load();
+    });
   }
 
   Future<void> _load() async {
@@ -77,7 +95,6 @@ class _FilmListPageState extends State<FilmListPage> {
                       hintText: 'Cari judul...',
                       prefixIcon: Icon(Icons.search),
                     ),
-                    onSubmitted: (_) => _load(),
                   ),
                 ),
                 const SizedBox(width: 8),

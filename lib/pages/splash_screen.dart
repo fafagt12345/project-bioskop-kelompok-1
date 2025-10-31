@@ -1,7 +1,9 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'login_page.dart';
+import 'home_page.dart';
 import '../theme/app_theme.dart';
+import '../api_service.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key}); // <-- tambahkan const constructor
@@ -11,19 +13,27 @@ class SplashScreen extends StatefulWidget {
 }
 
 class _SplashScreenState extends State<SplashScreen> {
-
   @override
   void initState() {
     super.initState();
+    _checkAuth();
+  }
 
-    // NOTE: kalau suatu saat ada token login tersimpan, 
-    // di sini kamu bisa cek & arahkan ke HomePage langsung.
-    Timer(const Duration(seconds: 2), () {
-      if (!mounted) return; // <-- aman dari memory leak
+  Future<void> _checkAuth() async {
+    final api = ApiService();
+    final token = await api.getStoredToken();
+
+    if (!mounted) return;
+    if (token != null) {
+      api.setToken(token); // set untuk penggunaan selanjutnya
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(builder: (_) => const HomePage()),
+      );
+    } else {
       Navigator.of(context).pushReplacement(
         MaterialPageRoute(builder: (_) => const LoginPage()),
       );
-    });
+    }
   }
 
   @override

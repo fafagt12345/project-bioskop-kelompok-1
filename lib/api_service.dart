@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart' show kIsWeb, defaultTargetPlatform, TargetPlatform;
+import 'package:shared_preferences/shared_preferences.dart';
 
 class ApiException implements Exception {
   final String message;
@@ -32,11 +33,12 @@ class PaginatedResponse {
         data: (json['data'] as List?) ?? const [],
         currentPage: json['current_page'] ?? 1,
         lastPage: json['last_page'] ?? 1,
-        perPage: json['per_page'] is int ? json['per_page'] : int.tryParse('${json['per_page'] ?? 10}') ?? 10,
+        perPage: json['per_page'] is int
+            ? json['per_page']
+            : int.tryParse('${json['per_page'] ?? 10}') ?? 10,
         total: json['total'] ?? (json['data'] is List ? (json['data'] as List).length : 0),
       );
     }
-    // fallback: array biasa
     final list = (json is List)
         ? json
         : (json is Map && json['data'] is List ? (json['data'] as List) : <dynamic>[]);
@@ -54,6 +56,9 @@ class ApiService {
   final Dio _dio;
   final String baseUrl;
   String? _token;
+
+  // cache genre: id -> name
+  Map<int, String>? _genreCache;
 
   static String suggestBaseUrl() {
     if (kIsWeb) return 'http://127.0.0.1:8000';
@@ -89,10 +94,36 @@ class ApiService {
     ));
   }
 
-  void setToken(String? token) => _token = token;
+  // ===== TOKEN STORAGE =====
+  static const _tokenKey = 'auth_token';
+
+  Future<String?> getStoredToken() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString(_tokenKey);
+  }
+
+  Future<void> setToken(String? token) async {
+    _token = token;
+    final prefs = await SharedPreferences.getInstance();
+    if (token != null) {
+      await prefs.setString(_tokenKey, token);
+    } else {
+      await prefs.remove(_tokenKey);
+    }
+  }
+
+  Future<void> logout() async {
+    try { await _dio.post('/auth/logout'); } catch (_) {}
+    await setToken(null);
+  }
 
   // ===== AUTH =====
-  Future<Map<String, dynamic>> register(String username, String password, {String? name, String? email}) async {
+  Future<Map<String, dynamic>> register(
+    String username,
+    String password, {
+    String? name,
+    String? email,
+  }) async {
     try {
       final res = await _dio.post('/auth/register', data: {
         'username': username,
@@ -101,17 +132,24 @@ class ApiService {
         if (email != null) 'email': email,
       });
       return _toMap(res.data);
-    } on DioException catch (e) { throw _wrap(e); }
+    } on DioException catch (e) {
+      throw _wrap(e);
+    }
   }
 
   Future<String> login(String username, String password) async {
     try {
-      final res = await _dio.post('/auth/login', data: {'username': username, 'password': password});
+      final res = await _dio.post('/auth/login', data: {
+        'username': username,
+        'password': password,
+      });
       final m = _toMap(res.data);
       final t = (m['token'] ?? '') as String;
-      if (t.isNotEmpty) setToken(t);
+      if (t.isNotEmpty) await setToken(t);
       return t;
-    } on DioException catch (e) { throw _wrap(e); }
+    } on DioException catch (e) {
+      throw _wrap(e);
+    }
   }
 
   // ===== FILM =====
@@ -124,26 +162,35 @@ class ApiService {
       };
       final res = await _dio.get('/film', queryParameters: qp);
       return PaginatedResponse.from(res.data);
-    } on DioException catch (e) { throw _wrap(e); }
+    } on DioException catch (e) {
+      throw _wrap(e);
+    }
   }
 
   Future<Map<String, dynamic>> filmDetail(dynamic id) async {
     try {
       final res = await _dio.get('/film/$id');
       return _toMap(res.data);
-    } on DioException catch (e) { throw _wrap(e); }
+    } on DioException catch (e) {
+      throw _wrap(e);
+    }
   }
 
   Future<Map<String, dynamic>> createFilm(Map<String, dynamic> body) async {
     try {
       final res = await _dio.post('/film', data: body);
       return _toMap(res.data);
-    } on DioException catch (e) { throw _wrap(e); }
+    } on DioException catch (e) {
+      throw _wrap(e);
+    }
   }
 
   Future<void> deleteFilm(dynamic id) async {
-    try { await _dio.delete('/film/$id'); }
-    on DioException catch (e) { throw _wrap(e); }
+    try {
+      await _dio.delete('/film/$id');
+    } on DioException catch (e) {
+      throw _wrap(e);
+    }
   }
 
   // ===== JADWAL =====
@@ -154,18 +201,69 @@ class ApiService {
       if (d is List) return d;
       if (d is Map && d['data'] is List) return d['data'];
       return <dynamic>[];
-    } on DioException catch (e) { throw _wrap(e); }
+    } on DioException catch (e) {
+      throw _wrap(e);
+    }
   }
 
-  // ===== SEATS =====
+   // ===== SEATS =====
   Future<List<dynamic>> seatsAvailable(int jadwalId) async {
     try {
       final res = await _dio.get('/jadwal/$jadwalId/seats');
-      if (res.data is List) return res.data as List;
-      if (res.data is Map && res.data['data'] is List) return res.data['data'];
-      return <dynamic>[];
-    } on DioException catch (e) { throw _wrap(e); }
+
+      // Ambil list mentah dari server
+      final raw = (res.data is List)
+          ? (res.data as List)
+          : (res.data is Map && res.data['data'] is List
+              ? (res.data['data'] as List)
+              : const <dynamic>[]);
+
+      // Normalisasi agar harga selalu numerik dan punya alias
+      final normalized = raw.map((e) {
+        final m = Map<String, dynamic>.from(e as Map);
+
+        num hargaNum;
+        final v = m['harga'];
+        if (v is num) {
+          hargaNum = v;
+        } else {
+          // coba parse dari string "50000.00"
+          final asInt = int.tryParse('$v');
+          if (asInt != null) {
+            hargaNum = asInt;
+          } else {
+            final asDouble = double.tryParse('$v');
+            hargaNum = asDouble?.round() ?? 0;
+          }
+        }
+
+        // fallback ke price dari server jika ada
+        if ((hargaNum == 0) && m.containsKey('price')) {
+          final pv = m['price'];
+          if (pv is num) hargaNum = pv;
+          else {
+            final pi = int.tryParse('$pv') ?? (double.tryParse('$pv')?.round() ?? 0);
+            hargaNum = pi;
+          }
+        }
+
+        m['harga']     = hargaNum;
+        m['price']     = hargaNum;
+        m['harga_int'] = hargaNum;
+
+        // rapikan status
+        final st = (m['status'] ?? 'tersedia').toString().toLowerCase();
+        m['status'] = (st == 'sold' || st == 'terjual') ? 'terjual' : 'tersedia';
+
+        return m;
+      }).toList();
+
+      return normalized;
+    } on DioException catch (e) {
+      throw _wrap(e);
+    }
   }
+
 
   // ===== CHECKOUT =====
   Future<Map<String, dynamic>> checkout({
@@ -177,12 +275,66 @@ class ApiService {
     try {
       final res = await _dio.post('/checkout', data: {
         'customer_id': customerId,
-        'jadwal_id'  : jadwalId,
-        'kursi_ids'  : kursiIds,
+        'jadwal_id': jadwalId,
+        'kursi_ids': kursiIds,
         if (kasirId != null) 'kasir_id': kasirId,
       });
       return _toMap(res.data);
-    } on DioException catch (e) { throw _wrap(e); }
+    } on DioException catch (e) {
+      throw _wrap(e);
+    }
+  }
+
+  // ===== GENRES (cache + fallback detail; tidak melempar ketika list gagal) =====
+  Future<Map<int, String>> _ensureGenres() async {
+    if (_genreCache != null) return _genreCache!;
+    final map = <int, String>{};
+    try {
+      final res = await _dio.get('/genres');
+      final list = (res.data is List)
+          ? (res.data as List)
+          : (res.data is Map && res.data['data'] is List
+              ? res.data['data'] as List
+              : const <dynamic>[]);
+
+      for (final it in list) {
+        final m = _toMap(it);
+        final rawId = m['id_genre'] ?? m['genre_id'] ?? m['id'];
+        final name  = (m['nama'] ?? m['nama_genre'] ?? m['name'] ?? m['judul'] ?? '').toString();
+        final id = rawId is int ? rawId : int.tryParse('$rawId');
+        if (id != null && name.isNotEmpty) {
+          map[id] = name;
+        }
+      }
+    } catch (_) {
+      // Jangan lempar error—biarkan kosong, nanti fallback /genres/{id}
+    }
+    _genreCache = map;
+    return map;
+  }
+
+  Future<String?> genreNameById(int? id) async {
+    if (id == null) return null;
+
+    // 1) coba cache/list
+    try {
+      final map = await _ensureGenres();
+      final fromCache = map[id];
+      if (fromCache != null && fromCache.isNotEmpty) return fromCache;
+    } catch (_) {}
+
+    // 2) fallback GET /genres/{id}
+    try {
+      final res = await _dio.get('/genres/$id');
+      final m = _toMap(res.data);
+      final name = (m['nama'] ?? m['nama_genre'] ?? m['name'] ?? m['judul'])?.toString();
+      if (name != null && name.isNotEmpty) {
+        _genreCache ??= {};
+        _genreCache![id] = name;
+        return name;
+      }
+    } catch (_) {}
+    return null;
   }
 
   // ===== Utils =====
@@ -190,7 +342,8 @@ class ApiService {
     final status = e.response?.statusCode;
     final data = e.response?.data;
     final msg = (data is Map && data['message'] is String)
-        ? data['message'] : e.message ?? 'Request error';
+        ? data['message']
+        : e.message ?? 'Request error';
     return ApiException(msg, status: status, data: data);
   }
 
