@@ -43,7 +43,8 @@ class _HomePageState extends State<HomePage> {
     setState(() => _loggingOut = true);
     final api = ApiService();
     try {
-      await api.logout(); // aman walau endpoint /auth/logout belum ada (ditry/catch di ApiService)
+      await api
+          .logout(); // aman walau endpoint /auth/logout belum ada (ditry/catch di ApiService)
     } catch (_) {
       // kita abaikan error agar UX mulus
     }

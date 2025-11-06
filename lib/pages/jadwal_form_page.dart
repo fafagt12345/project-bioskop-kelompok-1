@@ -60,12 +60,15 @@ class _JadwalFormPageState extends State<JadwalFormPage> {
 
     // studio
     final rawStudio = m['studio_id'] ?? m['id_studio'];
-    _studioId = (rawStudio is num) ? rawStudio.toInt() : int.tryParse('$rawStudio');
+    _studioId =
+        (rawStudio is num) ? rawStudio.toInt() : int.tryParse('$rawStudio');
 
     // tanggal
     final tgl = (m['tanggal'] ?? '').toString();
     if (tgl.isNotEmpty) {
-      try { _tanggal = DateTime.parse(tgl); } catch (_) {}
+      try {
+        _tanggal = DateTime.parse(tgl);
+      } catch (_) {}
       _tglCtl.text = _fmtDate(_tanggal);
     }
 
@@ -81,7 +84,7 @@ class _JadwalFormPageState extends State<JadwalFormPage> {
       return null;
     }
 
-    _mulai   = _parse(toStr(m['jam_mulai']));
+    _mulai = _parse(toStr(m['jam_mulai']));
     _selesai = _parse(toStr(m['jam_selesai']));
     _mulaiCtl.text = _fmtTime(_mulai).replaceAll(':00', '');
     _selesaiCtl.text = _fmtTime(_selesai).replaceAll(':00', '');
@@ -102,7 +105,8 @@ class _JadwalFormPageState extends State<JadwalFormPage> {
         });
       }
       // auto pilih kalau belum ada
-      _studioId ??= (_studios.isNotEmpty ? (_studios.first['id'] as int? ?? 1) : 1);
+      _studioId ??=
+          (_studios.isNotEmpty ? (_studios.first['id'] as int? ?? 1) : 1);
     } catch (e) {
       setState(() {
         _studios = const [
@@ -112,15 +116,18 @@ class _JadwalFormPageState extends State<JadwalFormPage> {
         ];
         _studioId ??= 1;
       });
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Gagal memuat studio: $e')));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text('Gagal memuat studio: $e')));
     }
   }
 
-  String _fmtDate(DateTime? d) =>
-      d == null ? '' : '${d.year.toString().padLeft(4,'0')}-${d.month.toString().padLeft(2,'0')}-${d.day.toString().padLeft(2,'0')}';
+  String _fmtDate(DateTime? d) => d == null
+      ? ''
+      : '${d.year.toString().padLeft(4, '0')}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
 
-  String _fmtTime(TimeOfDay? t) =>
-      t == null ? '' : '${t.hour.toString().padLeft(2,'0')}:${t.minute.toString().padLeft(2,'0')}:00';
+  String _fmtTime(TimeOfDay? t) => t == null
+      ? ''
+      : '${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}:00';
 
   Future<void> _pickDate() async {
     final now = DateTime.now();
@@ -159,18 +166,23 @@ class _JadwalFormPageState extends State<JadwalFormPage> {
     final m = _mulai!;
     final s = _selesai!;
     final startMin = m.hour * 60 + m.minute;
-    final endMin   = s.hour * 60 + s.minute;
+    final endMin = s.hour * 60 + s.minute;
     return endMin > startMin;
   }
 
   Future<void> _save() async {
     if (!_form.currentState!.validate()) return;
-    if (_studioId == null || _tanggal == null || _mulai == null || _selesai == null) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Lengkapi semua field')));
+    if (_studioId == null ||
+        _tanggal == null ||
+        _mulai == null ||
+        _selesai == null) {
+      ScaffoldMessenger.of(context)
+          .showSnackBar(const SnackBar(content: Text('Lengkapi semua field')));
       return;
     }
     if (!_timeOrderValid()) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Jam selesai harus lebih besar dari jam mulai')));
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('Jam selesai harus lebih besar dari jam mulai')));
       return;
     }
 
@@ -198,7 +210,8 @@ class _JadwalFormPageState extends State<JadwalFormPage> {
       Navigator.pop(context, true);
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Gagal simpan: $e')));
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('Gagal simpan: $e')));
       }
     } finally {
       if (mounted) setState(() => _loading = false);
@@ -212,7 +225,8 @@ class _JadwalFormPageState extends State<JadwalFormPage> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text('${isEdit ? "Edit" : "Tambah"} Jadwal • ${widget.filmTitle}'),
+        title:
+            Text('${isEdit ? "Edit" : "Tambah"} Jadwal • ${widget.filmTitle}'),
         backgroundColor: primary,
       ),
       body: Form(
@@ -225,11 +239,13 @@ class _JadwalFormPageState extends State<JadwalFormPage> {
               value: _studioId,
               items: _studios.map((s) {
                 final id = s['id'] as int;
-                final nama = (s['nama'] ?? s['nama_studio'] ?? 'Studio $id').toString();
+                final nama =
+                    (s['nama'] ?? s['nama_studio'] ?? 'Studio $id').toString();
                 return DropdownMenuItem<int>(value: id, child: Text(nama));
               }).toList(),
               onChanged: (v) => setState(() => _studioId = v),
-              decoration: const InputDecoration(labelText: 'Studio', border: OutlineInputBorder()),
+              decoration: const InputDecoration(
+                  labelText: 'Studio', border: OutlineInputBorder()),
               validator: (v) => v == null ? 'Pilih studio' : null,
             ),
             const SizedBox(height: 12),
@@ -283,10 +299,13 @@ class _JadwalFormPageState extends State<JadwalFormPage> {
             const SizedBox(height: 20),
 
             FilledButton.icon(
-              style: ButtonStyle(backgroundColor: MaterialStateProperty.all(primary)),
+              style: ButtonStyle(
+                  backgroundColor: MaterialStateProperty.all(primary)),
               onPressed: _loading ? null : _save,
               icon: const Icon(Icons.save),
-              label: Text(_loading ? 'Menyimpan...' : (isEdit ? 'Simpan Perubahan' : 'Simpan')),
+              label: Text(_loading
+                  ? 'Menyimpan...'
+                  : (isEdit ? 'Simpan Perubahan' : 'Simpan')),
             ),
           ],
         ),

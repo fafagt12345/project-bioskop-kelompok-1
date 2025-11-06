@@ -57,10 +57,15 @@ class _SeatSelectionPageState extends State<SeatSelectionPage> {
   }
 
   Future<void> _load() async {
-    setState(() { _loading = true; _error = null; _selected.clear(); });
+    setState(() {
+      _loading = true;
+      _error = null;
+      _selected.clear();
+    });
     try {
       final rows = await api.seatsAvailable(widget.jadwalId);
-      final parsed = rows.map((e) => Map<String, dynamic>.from(e as Map)).toList();
+      final parsed =
+          rows.map((e) => Map<String, dynamic>.from(e as Map)).toList();
 
       if (parsed.isEmpty && widget.studioId != null) {
         // ✅ tidak ada kursi: tawarkan generate 15 kursi
@@ -107,12 +112,14 @@ class _SeatSelectionPageState extends State<SeatSelectionPage> {
               const SizedBox(height: 12),
               Wrap(
                 spacing: 8,
-                children: ['A','B','C'].map((letter) {
+                children: ['A', 'B', 'C'].map((letter) {
                   final selected = chosen == letter;
                   return ChoiceChip(
                     label: Text(letter),
                     selected: selected,
-                    onSelected: (_) { setState(() => chosen = letter); },
+                    onSelected: (_) {
+                      setState(() => chosen = letter);
+                    },
                   );
                 }).toList(),
               ),
@@ -125,8 +132,12 @@ class _SeatSelectionPageState extends State<SeatSelectionPage> {
             ],
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Batal')),
-            FilledButton(onPressed: () => Navigator.pop(ctx), child: const Text('Lanjut')),
+            TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('Batal')),
+            FilledButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('Lanjut')),
           ],
         );
       },
@@ -139,7 +150,8 @@ class _SeatSelectionPageState extends State<SeatSelectionPage> {
     final virtual = List<Map<String, dynamic>>.generate(15, (i) {
       final nomor = i + 1;
       final label = '$prefix$nomor';
-      final negativeId = -(sid * 1000 + nomor); // akan diubah backend menjadi kursi real
+      final negativeId =
+          -(sid * 1000 + nomor); // akan diubah backend menjadi kursi real
       return {
         'kursi_id': negativeId,
         'studio_id': sid,
@@ -154,7 +166,12 @@ class _SeatSelectionPageState extends State<SeatSelectionPage> {
   }
 
   String _labelOf(Map<String, dynamic> s) {
-    return (s['nama_kursi'] ?? s['nomor_kursi'] ?? s['label'] ?? s['kursi_id'] ?? '').toString();
+    return (s['nama_kursi'] ??
+            s['nomor_kursi'] ??
+            s['label'] ??
+            s['kursi_id'] ??
+            '')
+        .toString();
   }
 
   String _labelById(int id) {
@@ -201,7 +218,8 @@ class _SeatSelectionPageState extends State<SeatSelectionPage> {
       String labels = '';
       final rawList = res['kursi'];
       if (rawList is List && rawList.isNotEmpty) {
-        final items = rawList.map((e) => (e is Map ? e['nomor_kursi'] : null))
+        final items = rawList
+            .map((e) => (e is Map ? e['nomor_kursi'] : null))
             .where((x) => x != null && x.toString().isNotEmpty)
             .map((x) => x.toString())
             .toList();
@@ -265,9 +283,12 @@ class _SeatSelectionPageState extends State<SeatSelectionPage> {
               const SizedBox(height: 6),
               Row(
                 children: [
-                  Expanded(child: Text('Dipilih: ${_selected.length}  |  Total: Rp $_total')),
+                  Expanded(
+                      child: Text(
+                          'Dipilih: ${_selected.length}  |  Total: Rp $_total')),
                   FilledButton.icon(
-                    style: ButtonStyle(backgroundColor: MaterialStateProperty.all(primary)),
+                    style: ButtonStyle(
+                        backgroundColor: MaterialStateProperty.all(primary)),
                     onPressed: _selected.isEmpty ? null : _checkout,
                     icon: const Icon(Icons.payment),
                     label: const Text('Checkout'),
@@ -281,7 +302,8 @@ class _SeatSelectionPageState extends State<SeatSelectionPage> {
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : _error != null
-              ? Center(child: Padding(
+              ? Center(
+                  child: Padding(
                   padding: const EdgeInsets.all(16),
                   child: Text(_error!, textAlign: TextAlign.center),
                 ))
@@ -331,7 +353,9 @@ class _SeatSelectionPageState extends State<SeatSelectionPage> {
                                 border: Border.all(
                                   color: sold
                                       ? Colors.grey.shade300
-                                      : (selected ? primary : Colors.grey.shade400),
+                                      : (selected
+                                          ? primary
+                                          : Colors.grey.shade400),
                                   width: 2,
                                 ),
                                 color: sold
@@ -350,7 +374,9 @@ class _SeatSelectionPageState extends State<SeatSelectionPage> {
                                       fontWeight: FontWeight.w700,
                                       color: sold
                                           ? Colors.grey
-                                          : (selected ? primary : Colors.black87),
+                                          : (selected
+                                              ? primary
+                                              : Colors.black87),
                                     ),
                                   ),
                                   const SizedBox(height: 4),
@@ -358,7 +384,8 @@ class _SeatSelectionPageState extends State<SeatSelectionPage> {
                                     'Rp $price',
                                     style: TextStyle(
                                       fontSize: 12,
-                                      color: sold ? Colors.grey : Colors.black87,
+                                      color:
+                                          sold ? Colors.grey : Colors.black87,
                                     ),
                                   ),
                                 ],

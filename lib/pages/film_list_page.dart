@@ -25,10 +25,15 @@ class _FilmListPageState extends State<FilmListPage> {
   }
 
   Future<void> _load() async {
-    setState(() { _loading = true; _error = null; });
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
     try {
       final res = await api.films(perPage: 200);
-      final list = res.data.map<Map<String, dynamic>>((e) => Map<String, dynamic>.from(e as Map)).toList();
+      final list = res.data
+          .map<Map<String, dynamic>>((e) => Map<String, dynamic>.from(e as Map))
+          .toList();
       setState(() => _items = list);
     } catch (e) {
       setState(() => _error = 'Gagal memuat film: $e');
@@ -48,9 +53,10 @@ class _FilmListPageState extends State<FilmListPage> {
   }
 
   String _subtitleOf(Map<String, dynamic> m) {
-    final genreName = (m['genre_name'] ?? m['genre_nama'] ?? m['genre'])?.toString();
-    final genreId   = (m['genre_id'] ?? m['id_genre']);
-    final durasi    = m['durasi']?.toString();
+    final genreName =
+        (m['genre_name'] ?? m['genre_nama'] ?? m['genre'])?.toString();
+    final genreId = (m['genre_id'] ?? m['id_genre']);
+    final durasi = m['durasi']?.toString();
     final g = (genreName != null && genreName.isNotEmpty)
         ? 'Genre: $genreName'
         : (genreId != null ? 'Genre ID: $genreId' : 'Genre: -');
@@ -69,7 +75,8 @@ class _FilmListPageState extends State<FilmListPage> {
   Future<void> _edit(Map<String, dynamic> film) async {
     final id = _filmIdOf(film);
     if (id == null) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('ID film tidak valid')));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(const SnackBar(content: Text('ID film tidak valid')));
       return;
     }
     final saved = await Navigator.push<bool>(
@@ -87,31 +94,39 @@ class _FilmListPageState extends State<FilmListPage> {
   Future<void> _delete(Map<String, dynamic> film) async {
     final id = _filmIdOf(film);
     if (id == null) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('ID film tidak valid')));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(const SnackBar(content: Text('ID film tidak valid')));
       return;
     }
     final sure = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Hapus Film'),
-        content: Text('Yakin ingin menghapus "${_titleOf(film)}"?'),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Batal')),
-          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Hapus')),
-        ],
-      ),
-    ) ?? false;
+          context: context,
+          builder: (ctx) => AlertDialog(
+            title: const Text('Hapus Film'),
+            content: Text('Yakin ingin menghapus "${_titleOf(film)}"?'),
+            actions: [
+              TextButton(
+                  onPressed: () => Navigator.pop(ctx, false),
+                  child: const Text('Batal')),
+              FilledButton(
+                  onPressed: () => Navigator.pop(ctx, true),
+                  child: const Text('Hapus')),
+            ],
+          ),
+        ) ??
+        false;
 
     if (!sure) return;
 
     try {
       await api.deleteFilm(id);
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Film dihapus')));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(const SnackBar(content: Text('Film dihapus')));
       _load();
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Gagal hapus: $e')));
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text('Gagal hapus: $e')));
     }
   }
 
@@ -132,7 +147,8 @@ class _FilmListPageState extends State<FilmListPage> {
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : _error != null
-              ? Center(child: Padding(
+              ? Center(
+                  child: Padding(
                   padding: const EdgeInsets.all(16),
                   child: Text(_error!, textAlign: TextAlign.center),
                 ))
@@ -145,14 +161,19 @@ class _FilmListPageState extends State<FilmListPage> {
                     itemBuilder: (context, i) {
                       final film = _items[i];
                       return ListTile(
-                        title: Text(_titleOf(film), style: const TextStyle(fontWeight: FontWeight.w600)),
+                        title: Text(_titleOf(film),
+                            style:
+                                const TextStyle(fontWeight: FontWeight.w600)),
                         subtitle: Text(_subtitleOf(film)),
                         onTap: () {
                           final id = _filmIdOf(film);
                           if (id != null) {
-                            Navigator.push(context, MaterialPageRoute(
-                              builder: (_) => FilmDetailPage(filmId: id as int, initial: film),
-                            ));
+                            Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => FilmDetailPage(
+                                      filmId: id as int, initial: film),
+                                ));
                           }
                         },
                         trailing: Row(

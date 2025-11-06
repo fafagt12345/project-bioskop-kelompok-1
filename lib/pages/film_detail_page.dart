@@ -24,20 +24,25 @@ class _FilmDetailPageState extends State<FilmDetailPage> {
     super.initState();
     if (widget.initial != null) {
       _film = Map<String, dynamic>.from(widget.initial!);
-      _genreName = (_film!['genre_name'] ??
-                    _film!['genre_nama'] ??
-                    _film!['genre'])?.toString();
+      _genreName =
+          (_film!['genre_name'] ?? _film!['genre_nama'] ?? _film!['genre'])
+              ?.toString();
     }
     _load();
   }
 
   Future<void> _load() async {
-    setState(() { _loading = true; _error = null; });
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
     try {
       final data = await api.filmDetail(widget.filmId);
 
       // 1) nama genre dari payload (jika controller sudah join)
-      String? gName = (data['genre_name'] ?? data['genre_nama'] ?? data['genre'])?.toString();
+      String? gName =
+          (data['genre_name'] ?? data['genre_nama'] ?? data['genre'])
+              ?.toString();
 
       // 2) kalau belum ada, ambil dari id
       if (gName == null || gName.isEmpty) {
@@ -61,12 +66,19 @@ class _FilmDetailPageState extends State<FilmDetailPage> {
   }
 
   String? _assetForFilm(Map<String, dynamic>? film) {
-    final title = (film?['judul'] ?? film?['title'] ?? '').toString().toLowerCase();
-    if (title.contains('avangers') || title.contains('avengers') || title.contains('endgame')) return 'assets/Avangers_EndGame.png';
+    final title =
+        (film?['judul'] ?? film?['title'] ?? '').toString().toLowerCase();
+    if (title.contains('avangers') ||
+        title.contains('avengers') ||
+        title.contains('endgame')) return 'assets/Avangers_EndGame.png';
     if (title.contains('laskar')) return 'assets/LaskarPelangi.png';
-    if (title.contains('stupid') || title.contains('my stupid boss')) return 'assets/MyStupidBoss.png';
-    if (title.contains('pengabdi') || title.contains('setan')) return 'assets/PengabdiSetan.png';
-    if (title.contains('toystory') || title.contains('toy story') || title.contains('toy')) return 'assets/ToyStory_4.png';
+    if (title.contains('stupid') || title.contains('my stupid boss'))
+      return 'assets/MyStupidBoss.png';
+    if (title.contains('pengabdi') || title.contains('setan'))
+      return 'assets/PengabdiSetan.png';
+    if (title.contains('toystory') ||
+        title.contains('toy story') ||
+        title.contains('toy')) return 'assets/ToyStory_4.png';
     final poster = film?['poster']?.toString();
     if (poster != null && poster.isNotEmpty) return poster;
     return null;
@@ -74,8 +86,11 @@ class _FilmDetailPageState extends State<FilmDetailPage> {
 
   Widget _buildCoverWidget(String? cover) {
     if (cover == null) return const SizedBox.shrink();
-    final isNetwork = cover.startsWith('http://') || cover.startsWith('https://');
-    final path = isNetwork ? cover : (cover.startsWith('assets/') ? cover : 'assets/$cover');
+    final isNetwork =
+        cover.startsWith('http://') || cover.startsWith('https://');
+    final path = isNetwork
+        ? cover
+        : (cover.startsWith('assets/') ? cover : 'assets/$cover');
 
     return Center(
       child: ClipRRect(
@@ -105,7 +120,8 @@ class _FilmDetailPageState extends State<FilmDetailPage> {
   @override
   Widget build(BuildContext context) {
     final primary = AppTheme.light.colorScheme.primary;
-    final title = (_film?['judul'] ?? _film?['title'] ?? 'Detail Film').toString();
+    final title =
+        (_film?['judul'] ?? _film?['title'] ?? 'Detail Film').toString();
     final sinopsis = (_film?['sinopsis'] ?? '').toString();
     final durasi = _film?['durasi']?.toString() ?? '-';
     final cover = _assetForFilm(_film);
@@ -116,14 +132,16 @@ class _FilmDetailPageState extends State<FilmDetailPage> {
         child: Padding(
           padding: const EdgeInsets.all(12),
           child: FilledButton.icon(
-            style: ButtonStyle(backgroundColor: MaterialStateProperty.all(primary)),
+            style: ButtonStyle(
+                backgroundColor: MaterialStateProperty.all(primary)),
             onPressed: _film == null
                 ? null
                 : () {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                        builder: (_) => JadwalListPage(filmId: widget.filmId, filmTitle: title),
+                        builder: (_) => JadwalListPage(
+                            filmId: widget.filmId, filmTitle: title),
                       ),
                     );
                   },
@@ -145,24 +163,31 @@ class _FilmDetailPageState extends State<FilmDetailPage> {
                       if (cover != null) const SizedBox(height: 12),
                       Card(
                         elevation: 2,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12)),
                         child: Padding(
                           padding: const EdgeInsets.all(16),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(title, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700)),
+                              Text(title,
+                                  style: const TextStyle(
+                                      fontSize: 20,
+                                      fontWeight: FontWeight.w700)),
                               const SizedBox(height: 8),
                               Wrap(
                                 spacing: 8,
                                 runSpacing: 8,
                                 children: [
                                   _Chip(label: 'Durasi: ${durasi}m'),
-                                  if (_genreName != null) _Chip(label: 'Genre: ${_genreName!}'),
+                                  if (_genreName != null)
+                                    _Chip(label: 'Genre: ${_genreName!}'),
                                 ],
                               ),
                               const SizedBox(height: 16),
-                              const Text('Sinopsis', style: TextStyle(fontWeight: FontWeight.w600)),
+                              const Text('Sinopsis',
+                                  style:
+                                      TextStyle(fontWeight: FontWeight.w600)),
                               const SizedBox(height: 8),
                               Text(sinopsis.isEmpty ? '-' : sinopsis),
                             ],

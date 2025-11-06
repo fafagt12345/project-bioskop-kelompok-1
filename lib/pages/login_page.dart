@@ -22,18 +22,26 @@ class _LoginPageState extends State<LoginPage> {
     try {
       final user = _username.text.trim();
       final pass = _password.text.trim();
-      if (user.isEmpty || pass.isEmpty) throw Exception('Username/password wajib diisi');
+      if (user.isEmpty || pass.isEmpty)
+        throw Exception('Username/password wajib diisi');
 
       final token = await api.login(user, pass);
       api.setToken(token);
 
       if (!mounted) return;
-      Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const HomePage()));
+      Navigator.pushReplacement(
+          context, MaterialPageRoute(builder: (_) => const HomePage()));
     } on ApiException catch (e) {
-      final msg = (e.status == 401 || e.status == 404) ? 'Username atau password salah' : e.message;
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
+      final msg = (e.status == 401 || e.status == 404)
+          ? 'Username atau password salah'
+          : e.message;
+      if (mounted)
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text(msg)));
     } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Login gagal: $e')));
+      if (mounted)
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('Login gagal: $e')));
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -66,13 +74,18 @@ class _LoginPageState extends State<LoginPage> {
                       CircleAvatar(
                         radius: 36,
                         backgroundColor: primary,
-                        child: const Icon(Icons.movie, color: Colors.white, size: 36),
+                        child: const Icon(Icons.movie,
+                            color: Colors.white, size: 36),
                       ),
                       const SizedBox(height: 14),
                       Text('Selamat datang di BioskopKu',
-                          style: TextStyle(fontSize: 22, fontWeight: FontWeight.w700, color: primary)),
+                          style: TextStyle(
+                              fontSize: 22,
+                              fontWeight: FontWeight.w700,
+                              color: primary)),
                       const SizedBox(height: 6),
-                      Text('Silahkan login dahulu.', style: TextStyle(color: Colors.grey.shade700)),
+                      Text('Silahkan login dahulu.',
+                          style: TextStyle(color: Colors.grey.shade700)),
                     ],
                   ),
                   const SizedBox(height: 20),
@@ -109,8 +122,11 @@ class _LoginPageState extends State<LoginPage> {
                             hintText: 'Password',
                             prefixIcon: const Icon(Icons.lock),
                             suffixIcon: IconButton(
-                              icon: Icon(_obscurePassword ? Icons.visibility_off : Icons.visibility),
-                              onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+                              icon: Icon(_obscurePassword
+                                  ? Icons.visibility_off
+                                  : Icons.visibility),
+                              onPressed: () => setState(
+                                  () => _obscurePassword = !_obscurePassword),
                             ),
                           ),
                           obscureText: _obscurePassword,
@@ -120,8 +136,11 @@ class _LoginPageState extends State<LoginPage> {
                           width: double.infinity,
                           child: FilledButton(
                             style: ButtonStyle(
-                              backgroundColor: MaterialStateProperty.all(primary),
-                              shape: MaterialStateProperty.all(RoundedRectangleBorder(borderRadius: BorderRadius.circular(30))),
+                              backgroundColor:
+                                  MaterialStateProperty.all(primary),
+                              shape: MaterialStateProperty.all(
+                                  RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(30))),
                             ),
                             onPressed: _loading ? null : _login,
                             child: Padding(
@@ -132,7 +151,10 @@ class _LoginPageState extends State<LoginPage> {
                         ),
                         const SizedBox(height: 8),
                         TextButton(
-                          onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const RegistrationPage())),
+                          onPressed: () => Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                  builder: (_) => const RegistrationPage())),
                           child: const Text('Lupa password?'),
                         ),
                       ],
@@ -144,9 +166,13 @@ class _LoginPageState extends State<LoginPage> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Text('Tidak punya akun? ', style: TextStyle(color: Colors.grey.shade700)),
+                      Text('Tidak punya akun? ',
+                          style: TextStyle(color: Colors.grey.shade700)),
                       TextButton(
-                        onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const RegistrationPage())),
+                        onPressed: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                                builder: (_) => const RegistrationPage())),
                         child: const Text('Daftar dulu.'),
                       )
                     ],

@@ -61,8 +61,10 @@ class AppTheme {
       style: ButtonStyle(
         backgroundColor: MaterialStateProperty.all(_lightScheme.primary),
         foregroundColor: MaterialStateProperty.all(_lightScheme.onPrimary),
-        padding: MaterialStateProperty.all(const EdgeInsets.symmetric(vertical: 14, horizontal: 20)),
-        shape: MaterialStateProperty.all(RoundedRectangleBorder(borderRadius: BorderRadius.circular(30))),
+        padding: MaterialStateProperty.all(
+            const EdgeInsets.symmetric(vertical: 14, horizontal: 20)),
+        shape: MaterialStateProperty.all(
+            RoundedRectangleBorder(borderRadius: BorderRadius.circular(30))),
       ),
     ),
     textButtonTheme: TextButtonThemeData(
@@ -139,8 +141,10 @@ class AppTheme {
       style: ButtonStyle(
         backgroundColor: MaterialStateProperty.all(_darkScheme.primary),
         foregroundColor: MaterialStateProperty.all(_darkScheme.onPrimary),
-        padding: MaterialStateProperty.all(const EdgeInsets.symmetric(vertical: 14, horizontal: 20)),
-        shape: MaterialStateProperty.all(RoundedRectangleBorder(borderRadius: BorderRadius.circular(30))),
+        padding: MaterialStateProperty.all(
+            const EdgeInsets.symmetric(vertical: 14, horizontal: 20)),
+        shape: MaterialStateProperty.all(
+            RoundedRectangleBorder(borderRadius: BorderRadius.circular(30))),
       ),
     ),
     textButtonTheme: TextButtonThemeData(

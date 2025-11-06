@@ -77,8 +77,11 @@ class _RegistrationPageState extends State<RegistrationPage> {
               decoration: InputDecoration(
                 labelText: 'Password',
                 suffixIcon: IconButton(
-                  icon: Icon(_obscurePassword ? Icons.visibility_off : Icons.visibility),
-                  onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+                  icon: Icon(_obscurePassword
+                      ? Icons.visibility_off
+                      : Icons.visibility),
+                  onPressed: () =>
+                      setState(() => _obscurePassword = !_obscurePassword),
                 ),
               ),
               obscureText: _obscurePassword,
@@ -86,7 +89,8 @@ class _RegistrationPageState extends State<RegistrationPage> {
             ),
             const SizedBox(height: 16),
             FilledButton(
-              style: ButtonStyle(backgroundColor: MaterialStateProperty.all(primary)),
+              style: ButtonStyle(
+                  backgroundColor: MaterialStateProperty.all(primary)),
               onPressed: _loading ? null : _register,
               child: Text(_loading ? 'Mendaftar...' : 'Daftar'),
             ),

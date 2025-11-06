@@ -33,10 +33,10 @@ class _FilmFormPageState extends State<FilmFormPage> {
     // isi awal bila edit
     final m = widget.initial;
     if (m != null) {
-      _judulC.text    = (m['judul'] ?? m['title'] ?? '').toString();
+      _judulC.text = (m['judul'] ?? m['title'] ?? '').toString();
       _sinopsisC.text = (m['sinopsis'] ?? '').toString();
-      _durasiC.text   = (m['durasi'] ?? '').toString();
-      final gidRaw    = m['genre_id'] ?? m['id_genre'];
+      _durasiC.text = (m['durasi'] ?? '').toString();
+      final gidRaw = m['genre_id'] ?? m['id_genre'];
       _selectedGenreId = gidRaw is int ? gidRaw : int.tryParse('$gidRaw');
     }
     _loadGenres();
@@ -53,21 +53,28 @@ class _FilmFormPageState extends State<FilmFormPage> {
   Future<void> _loadGenres() async {
     try {
       final list = await api.genresList(); // [{id, nama}, ...]
-      setState(() => _genres = list.map((e) => Map<String, dynamic>.from(e)).toList());
+      setState(() =>
+          _genres = list.map((e) => Map<String, dynamic>.from(e)).toList());
 
       // kalau edit & genre belum cocok id-nya (mis. kolom beda), coba selaraskan
       if (_selectedGenreId == null && widget.initial != null) {
         final nameFromPayload = (widget.initial!['genre_name'] ??
-                                 widget.initial!['genre_nama'] ??
-                                 widget.initial!['genre'])?.toString();
+                widget.initial!['genre_nama'] ??
+                widget.initial!['genre'])
+            ?.toString();
         if (nameFromPayload != null && nameFromPayload.isNotEmpty) {
           final found = _genres.firstWhere(
-            (g) => (g['nama'] ?? g['name'] ?? g['judul'] ?? '').toString().toLowerCase()
-                    == nameFromPayload.toLowerCase(),
+            (g) =>
+                (g['nama'] ?? g['name'] ?? g['judul'] ?? '')
+                    .toString()
+                    .toLowerCase() ==
+                nameFromPayload.toLowerCase(),
             orElse: () => {},
           );
           if (found.isNotEmpty) {
-            setState(() => _selectedGenreId = (found['id'] is int) ? found['id'] as int : int.tryParse('${found['id']}'));
+            setState(() => _selectedGenreId = (found['id'] is int)
+                ? found['id'] as int
+                : int.tryParse('${found['id']}'));
           }
         }
       }
@@ -79,18 +86,22 @@ class _FilmFormPageState extends State<FilmFormPage> {
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
     if (_selectedGenreId == null) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Pilih genre terlebih dahulu')));
+      ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Pilih genre terlebih dahulu')));
       return;
     }
 
     final body = <String, dynamic>{
-      'judul'    : _judulC.text.trim(),
-      'sinopsis' : _sinopsisC.text.trim(),
-      'durasi'   : int.tryParse(_durasiC.text.trim()) ?? 0,
-      'genre_id' : _selectedGenreId,
+      'judul': _judulC.text.trim(),
+      'sinopsis': _sinopsisC.text.trim(),
+      'durasi': int.tryParse(_durasiC.text.trim()) ?? 0,
+      'genre_id': _selectedGenreId,
     };
 
-    setState(() { _saving = true; _error = null; });
+    setState(() {
+      _saving = true;
+      _error = null;
+    });
     try {
       if (widget.filmId == null) {
         await api.createFilm(body);
@@ -118,8 +129,10 @@ class _FilmFormPageState extends State<FilmFormPage> {
             onPressed: _saving ? null : _save,
             child: _saving
                 ? const SizedBox(
-                    width: 18, height: 18,
-                    child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(
+                        strokeWidth: 2, color: Colors.white),
                   )
                 : const Text('SIMPAN', style: TextStyle(color: Colors.white)),
           )
@@ -141,7 +154,8 @@ class _FilmFormPageState extends State<FilmFormPage> {
                     border: Border.all(color: Colors.red.shade200),
                     borderRadius: BorderRadius.circular(8),
                   ),
-                  child: Text(_error!, style: TextStyle(color: Colors.red.shade800)),
+                  child: Text(_error!,
+                      style: TextStyle(color: Colors.red.shade800)),
                 ),
               TextFormField(
                 controller: _judulC,
@@ -149,7 +163,8 @@ class _FilmFormPageState extends State<FilmFormPage> {
                   labelText: 'Judul',
                   border: OutlineInputBorder(),
                 ),
-                validator: (v) => (v == null || v.trim().isEmpty) ? 'Judul wajib' : null,
+                validator: (v) =>
+                    (v == null || v.trim().isEmpty) ? 'Judul wajib' : null,
               ),
               const SizedBox(height: 12),
               TextFormField(
@@ -178,8 +193,12 @@ class _FilmFormPageState extends State<FilmFormPage> {
               DropdownButtonFormField<int>(
                 value: _selectedGenreId,
                 items: _genres.map((g) {
-                  final id   = (g['id'] is int) ? g['id'] as int : int.tryParse('${g['id']}');
-                  final name = (g['nama'] ?? g['name'] ?? g['judul'] ?? 'Tanpa Nama').toString();
+                  final id = (g['id'] is int)
+                      ? g['id'] as int
+                      : int.tryParse('${g['id']}');
+                  final name =
+                      (g['nama'] ?? g['name'] ?? g['judul'] ?? 'Tanpa Nama')
+                          .toString();
                   return DropdownMenuItem<int>(value: id, child: Text(name));
                 }).toList(),
                 onChanged: (v) => setState(() => _selectedGenreId = v),
@@ -192,7 +211,8 @@ class _FilmFormPageState extends State<FilmFormPage> {
               SizedBox(
                 width: double.infinity,
                 child: FilledButton.icon(
-                  style: ButtonStyle(backgroundColor: MaterialStateProperty.all(primary)),
+                  style: ButtonStyle(
+                      backgroundColor: MaterialStateProperty.all(primary)),
                   onPressed: _saving ? null : _save,
                   icon: const Icon(Icons.save),
                   label: Text(_saving ? 'Menyimpan...' : 'Simpan'),

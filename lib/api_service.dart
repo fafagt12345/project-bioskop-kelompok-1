@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:dio/dio.dart';
-import 'package:flutter/foundation.dart' show kIsWeb, defaultTargetPlatform, TargetPlatform;
+import 'package:flutter/foundation.dart'
+    show kIsWeb, defaultTargetPlatform, TargetPlatform;
 import 'package:shared_preferences/shared_preferences.dart';
 
 class ApiException implements Exception {
@@ -28,7 +29,9 @@ class PaginatedResponse {
   });
 
   factory PaginatedResponse.from(dynamic json) {
-    if (json is Map && json.containsKey('data') && json.containsKey('current_page')) {
+    if (json is Map &&
+        json.containsKey('data') &&
+        json.containsKey('current_page')) {
       return PaginatedResponse(
         data: (json['data'] as List?) ?? const [],
         currentPage: json['current_page'] ?? 1,
@@ -36,12 +39,15 @@ class PaginatedResponse {
         perPage: json['per_page'] is int
             ? json['per_page']
             : int.tryParse('${json['per_page'] ?? 10}') ?? 10,
-        total: json['total'] ?? (json['data'] is List ? (json['data'] as List).length : 0),
+        total: json['total'] ??
+            (json['data'] is List ? (json['data'] as List).length : 0),
       );
     }
     final list = (json is List)
         ? json
-        : (json is Map && json['data'] is List ? (json['data'] as List) : <dynamic>[]);
+        : (json is Map && json['data'] is List
+            ? (json['data'] as List)
+            : <dynamic>[]);
     return PaginatedResponse(
       data: list,
       currentPage: 1,
@@ -61,7 +67,8 @@ class ApiService {
 
   static String suggestBaseUrl() {
     if (kIsWeb) return 'http://127.0.0.1:8000';
-    if (defaultTargetPlatform == TargetPlatform.android) return 'http://10.0.2.2:8000';
+    if (defaultTargetPlatform == TargetPlatform.android)
+      return 'http://10.0.2.2:8000';
     return 'http://127.0.0.1:8000';
   }
 
@@ -71,7 +78,10 @@ class ApiService {
           BaseOptions(
             connectTimeout: const Duration(seconds: 10),
             receiveTimeout: const Duration(seconds: 20),
-            headers: {'Accept': 'application/json', 'Content-Type': 'application/json'},
+            headers: {
+              'Accept': 'application/json',
+              'Content-Type': 'application/json'
+            },
           ),
         ) {
     _dio.interceptors.add(InterceptorsWrapper(
@@ -112,7 +122,9 @@ class ApiService {
   }
 
   Future<void> logout() async {
-    try { await _dio.post('/auth/logout'); } catch (_) {}
+    try {
+      await _dio.post('/auth/logout');
+    } catch (_) {}
     await setToken(null);
   }
 
@@ -152,7 +164,8 @@ class ApiService {
   }
 
   // ===== FILM =====
-  Future<PaginatedResponse> films({int page = 1, int perPage = 50, String? search}) async {
+  Future<PaginatedResponse> films(
+      {int page = 1, int perPage = 50, String? search}) async {
     try {
       final qp = <String, dynamic>{
         'page': page,
@@ -185,7 +198,8 @@ class ApiService {
   }
 
   // ✅ Update film
-  Future<Map<String, dynamic>> updateFilm(int id, Map<String, dynamic> body) async {
+  Future<Map<String, dynamic>> updateFilm(
+      int id, Map<String, dynamic> body) async {
     try {
       final res = await _dio.put('/film/$id', data: body);
       return _toMap(res.data);
@@ -205,13 +219,15 @@ class ApiService {
 
   // ===== JADWAL (tambahan CRUD front-end) =====
   Future<List<Map<String, dynamic>>> jadwalList({int? filmId}) async {
-    final qp = <String, dynamic>{ if (filmId != null) 'film_id': filmId };
+    final qp = <String, dynamic>{if (filmId != null) 'film_id': filmId};
     final res = await _dio.get('/jadwal', queryParameters: qp);
     final raw = res.data;
     final list = (raw is List)
         ? raw
         : (raw is Map && raw['data'] is List ? raw['data'] : const []);
-    return list.map<Map<String, dynamic>>((e) => Map<String, dynamic>.from(e as Map)).toList();
+    return list
+        .map<Map<String, dynamic>>((e) => Map<String, dynamic>.from(e as Map))
+        .toList();
   }
 
   Future<Map<String, dynamic>> jadwalShow(int id) async {
@@ -222,9 +238,9 @@ class ApiService {
   Future<Map<String, dynamic>> jadwalCreate({
     required int filmId,
     required int studioId,
-    required String tanggal,      // 'YYYY-MM-DD'
-    required String jamMulai,     // 'HH:mm:ss'
-    required String jamSelesai,   // 'HH:mm:ss'
+    required String tanggal, // 'YYYY-MM-DD'
+    required String jamMulai, // 'HH:mm:ss'
+    required String jamSelesai, // 'HH:mm:ss'
   }) async {
     final res = await _dio.post('/jadwal', data: {
       'film_id': filmId,
@@ -257,7 +273,8 @@ class ApiService {
   /// Hapus jadwal — default force=true (hapus tiket & detail-transaksi terkait)
   Future<void> jadwalDelete(int id, {bool force = true}) async {
     try {
-      await _dio.delete('/jadwal/$id', queryParameters: {'force': force ? 1 : 0});
+      await _dio
+          .delete('/jadwal/$id', queryParameters: {'force': force ? 1 : 0});
     } on DioException catch (e) {
       throw _wrap(e);
     }
@@ -282,7 +299,8 @@ class ApiService {
       final m = Map<String, dynamic>.from(e as Map);
       final rawId = m['studio_id'] ?? m['id'];
       final id = rawId is int ? rawId : int.tryParse('$rawId') ?? -1;
-      final nama = (m['nama_studio'] ?? m['nama'] ?? m['name'] ?? 'Studio $id').toString();
+      final nama = (m['nama_studio'] ?? m['nama'] ?? m['name'] ?? 'Studio $id')
+          .toString();
       return {'id': id, 'nama': nama, ...m};
     }).toList();
   }
@@ -330,19 +348,22 @@ class ApiService {
 
         if ((hargaNum == 0) && m.containsKey('price')) {
           final pv = m['price'];
-          if (pv is num) hargaNum = pv;
+          if (pv is num)
+            hargaNum = pv;
           else {
-            final pi = int.tryParse('$pv') ?? (double.tryParse('$pv')?.round() ?? 0);
+            final pi =
+                int.tryParse('$pv') ?? (double.tryParse('$pv')?.round() ?? 0);
             hargaNum = pi;
           }
         }
 
-        m['harga']     = hargaNum;
-        m['price']     = hargaNum;
+        m['harga'] = hargaNum;
+        m['price'] = hargaNum;
         m['harga_int'] = hargaNum;
 
         final st = (m['status'] ?? 'tersedia').toString().toLowerCase();
-        m['status'] = (st == 'sold' || st == 'terjual') ? 'terjual' : 'tersedia';
+        m['status'] =
+            (st == 'sold' || st == 'terjual') ? 'terjual' : 'tersedia';
 
         return m;
       }).toList();
@@ -381,15 +402,15 @@ class ApiService {
       final list = (raw is List)
           ? raw
           : (raw is Map && raw['data'] is List ? raw['data'] : const []);
-      return list
-          .map<Map<String, dynamic>>((e) {
-            final m = Map<String, dynamic>.from(e as Map);
-            final rawId = m['id'] ?? m['genre_id'] ?? m['id_genre'];
-            final id = rawId is int ? rawId : int.tryParse('$rawId') ?? -1;
-            final nama = (m['nama'] ?? m['nama_genre'] ?? m['name'] ?? m['judul'] ?? '').toString();
-            return {'id': id, 'nama': nama, ...m};
-          })
-          .toList();
+      return list.map<Map<String, dynamic>>((e) {
+        final m = Map<String, dynamic>.from(e as Map);
+        final rawId = m['id'] ?? m['genre_id'] ?? m['id_genre'];
+        final id = rawId is int ? rawId : int.tryParse('$rawId') ?? -1;
+        final nama =
+            (m['nama'] ?? m['nama_genre'] ?? m['name'] ?? m['judul'] ?? '')
+                .toString();
+        return {'id': id, 'nama': nama, ...m};
+      }).toList();
     } on DioException catch (e) {
       throw _wrap(e);
     }
@@ -409,7 +430,9 @@ class ApiService {
       for (final it in list) {
         final m = _toMap(it);
         final rawId = m['id_genre'] ?? m['genre_id'] ?? m['id'];
-        final name  = (m['nama'] ?? m['nama_genre'] ?? m['name'] ?? m['judul'] ?? '').toString();
+        final name =
+            (m['nama'] ?? m['nama_genre'] ?? m['name'] ?? m['judul'] ?? '')
+                .toString();
         final id = rawId is int ? rawId : int.tryParse('$rawId');
         if (id != null && name.isNotEmpty) {
           map[id] = name;
@@ -432,7 +455,8 @@ class ApiService {
     try {
       final res = await _dio.get('/genres/$id');
       final m = _toMap(res.data);
-      final name = (m['nama'] ?? m['nama_genre'] ?? m['name'] ?? m['judul'])?.toString();
+      final name =
+          (m['nama'] ?? m['nama_genre'] ?? m['name'] ?? m['judul'])?.toString();
       if (name != null && name.isNotEmpty) {
         _genreCache ??= {};
         _genreCache![id] = name;

@@ -27,13 +27,16 @@ class CheckoutSuccessPage extends StatelessWidget {
 
     final k = d['kursi'];
     if (k is List && k.isNotEmpty) {
-      final labels = k.map((e) {
-        if (e is Map) {
-          final m = Map<String, dynamic>.from(e);
-          return (m['nomor_kursi'] ?? m['label'] ?? m['kursi']).toString();
-        }
-        return e.toString();
-      }).where((s) => s.trim().isNotEmpty).toList();
+      final labels = k
+          .map((e) {
+            if (e is Map) {
+              final m = Map<String, dynamic>.from(e);
+              return (m['nomor_kursi'] ?? m['label'] ?? m['kursi']).toString();
+            }
+            return e.toString();
+          })
+          .where((s) => s.trim().isNotEmpty)
+          .toList();
       if (labels.isNotEmpty) return labels.join(', ');
     }
 
@@ -45,26 +48,29 @@ class CheckoutSuccessPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final primary = AppTheme.light.colorScheme.primary;
-    final trxId  = data['transaksi_id'] ?? data['id'] ?? '-';
-    final total  = data['total_harga'] ?? 0;
+    final trxId = data['transaksi_id'] ?? data['id'] ?? '-';
+    final total = data['total_harga'] ?? 0;
     final kursiTeks = _seatLabels(data);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Berhasil Checkout'), backgroundColor: primary),
+      appBar: AppBar(
+          title: const Text('Berhasil Checkout'), backgroundColor: primary),
       body: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text('Transaksi ID: $trxId',
-                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+                style:
+                    const TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
             const SizedBox(height: 8),
             Text('Total Bayar: Rp ${_formatRp(total)}'),
             const SizedBox(height: 8),
             Text('Kursi: $kursiTeks'),
             const Spacer(),
             FilledButton(
-              style: ButtonStyle(backgroundColor: MaterialStateProperty.all(primary)),
+              style: ButtonStyle(
+                  backgroundColor: MaterialStateProperty.all(primary)),
               onPressed: () => Navigator.popUntil(context, (r) => r.isFirst),
               child: const Text('Kembali ke awal'),
             ),

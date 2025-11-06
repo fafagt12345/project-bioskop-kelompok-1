@@ -7,7 +7,8 @@ import 'seat_selection_page.dart'; // ✅ tambahkan
 class JadwalListPage extends StatefulWidget {
   final int filmId;
   final String filmTitle;
-  const JadwalListPage({super.key, required this.filmId, required this.filmTitle});
+  const JadwalListPage(
+      {super.key, required this.filmId, required this.filmTitle});
 
   @override
   State<JadwalListPage> createState() => _JadwalListPageState();
@@ -26,7 +27,10 @@ class _JadwalListPageState extends State<JadwalListPage> {
   }
 
   Future<void> _load() async {
-    setState(() { _loading = true; _error = null; });
+    setState(() {
+      _loading = true;
+      _error = null;
+    });
     try {
       final list = await api.jadwalList(filmId: widget.filmId);
       setState(() => _rows = list);
@@ -37,8 +41,11 @@ class _JadwalListPageState extends State<JadwalListPage> {
     }
   }
 
-  String _studioName(Map<String, dynamic> m) =>
-      (m['nama_studio'] ?? m['studio_nama'] ?? m['studio'] ?? 'Studio ${m['studio_id'] ?? '-'}').toString();
+  String _studioName(Map<String, dynamic> m) => (m['nama_studio'] ??
+          m['studio_nama'] ??
+          m['studio'] ??
+          'Studio ${m['studio_id'] ?? '-'}')
+      .toString();
 
   String _timeHHmm(String t) {
     if (t.isEmpty) return t;
@@ -50,7 +57,8 @@ class _JadwalListPageState extends State<JadwalListPage> {
     final ok = await Navigator.push<bool>(
       context,
       MaterialPageRoute(
-        builder: (_) => JadwalFormPage(filmId: widget.filmId, filmTitle: widget.filmTitle),
+        builder: (_) =>
+            JadwalFormPage(filmId: widget.filmId, filmTitle: widget.filmTitle),
       ),
     );
     if (ok == true) _load();
@@ -75,26 +83,33 @@ class _JadwalListPageState extends State<JadwalListPage> {
 
   Future<void> _delete(int id) async {
     final sure = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Hapus Jadwal'),
-        content: const Text('Yakin ingin menghapus jadwal ini?'),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Batal')),
-          FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Hapus')),
-        ],
-      ),
-    ) ?? false;
+          context: context,
+          builder: (ctx) => AlertDialog(
+            title: const Text('Hapus Jadwal'),
+            content: const Text('Yakin ingin menghapus jadwal ini?'),
+            actions: [
+              TextButton(
+                  onPressed: () => Navigator.pop(ctx, false),
+                  child: const Text('Batal')),
+              FilledButton(
+                  onPressed: () => Navigator.pop(ctx, true),
+                  child: const Text('Hapus')),
+            ],
+          ),
+        ) ??
+        false;
     if (!sure) return;
     try {
       await api.jadwalDelete(id);
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Jadwal terhapus')));
+        ScaffoldMessenger.of(context)
+            .showSnackBar(const SnackBar(content: Text('Jadwal terhapus')));
       }
       _load();
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Gagal hapus: $e')));
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('Gagal hapus: $e')));
       }
     }
   }
@@ -118,7 +133,8 @@ class _JadwalListPageState extends State<JadwalListPage> {
           : _error != null
               ? Center(child: Text('Gagal memuat: $_error'))
               : (_rows.isEmpty
-                  ? const Center(child: Text('Belum ada jadwal. Tekan tombol “Tambah”.'))
+                  ? const Center(
+                      child: Text('Belum ada jadwal. Tekan tombol “Tambah”.'))
                   : RefreshIndicator(
                       onRefresh: _load,
                       child: ListView.separated(
@@ -131,15 +147,18 @@ class _JadwalListPageState extends State<JadwalListPage> {
                               ? (m['jadwal_id'] as num).toInt()
                               : int.tryParse('${m['jadwal_id']}') ?? 0;
                           final tgl = (m['tanggal'] ?? '').toString();
-                          final jm  = _timeHHmm((m['jam_mulai'] ?? '').toString());
-                          final js  = _timeHHmm((m['jam_selesai'] ?? '').toString());
+                          final jm =
+                              _timeHHmm((m['jam_mulai'] ?? '').toString());
+                          final js =
+                              _timeHHmm((m['jam_selesai'] ?? '').toString());
                           final studio = _studioName(m);
                           final studioId = (m['studio_id'] is num)
                               ? (m['studio_id'] as num).toInt()
                               : int.tryParse('${m['studio_id']}');
 
                           return Card(
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12)),
                             child: ListTile(
                               onTap: () {
                                 // ✅ klik item → pilih kursi
@@ -149,12 +168,15 @@ class _JadwalListPageState extends State<JadwalListPage> {
                                     builder: (_) => SeatSelectionPage(
                                       jadwalId: id,
                                       filmTitle: widget.filmTitle,
-                                      studioId: studioId, // penting buat generate kursi
+                                      studioId:
+                                          studioId, // penting buat generate kursi
                                     ),
                                   ),
                                 );
                               },
-                              title: Text('$tgl  •  $jm–$js', style: const TextStyle(fontWeight: FontWeight.w600)),
+                              title: Text('$tgl  •  $jm–$js',
+                                  style: const TextStyle(
+                                      fontWeight: FontWeight.w600)),
                               subtitle: Text(studio),
                               trailing: Row(
                                 mainAxisSize: MainAxisSize.min,
