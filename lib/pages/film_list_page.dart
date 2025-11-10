@@ -17,11 +17,19 @@ class _FilmListPageState extends State<FilmListPage> {
   bool _loading = true;
   String? _error;
   List<Map<String, dynamic>> _items = [];
+  bool _isAdmin = false;
 
   @override
   void initState() {
     super.initState();
+    _loadRole();
     _load();
+  }
+
+  Future<void> _loadRole() async {
+    final r = await api.getStoredRole();
+    if (!mounted) return;
+    setState(() => _isAdmin = (r == 'admin'));
   }
 
   Future<void> _load() async {
@@ -138,12 +146,14 @@ class _FilmListPageState extends State<FilmListPage> {
         title: const Text('Daftar Film'),
         backgroundColor: primary,
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: _create,
-        backgroundColor: primary,
-        icon: const Icon(Icons.add),
-        label: const Text('Tambah'),
-      ),
+      floatingActionButton: _isAdmin
+          ? FloatingActionButton.extended(
+              onPressed: _create,
+              backgroundColor: primary,
+              icon: const Icon(Icons.add),
+              label: const Text('Tambah'),
+            )
+          : null,
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : _error != null
@@ -176,25 +186,27 @@ class _FilmListPageState extends State<FilmListPage> {
                                 ));
                           }
                         },
-                        trailing: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            IconButton(
-                              tooltip: 'Edit',
-                              icon: const Icon(Icons.edit),
-                              onPressed: () => _edit(film),
-                            ),
-                            IconButton(
-                              tooltip: 'Hapus',
-                              icon: const Icon(Icons.delete_outline),
-                              onPressed: () => _delete(film),
-                            ),
-                          ],
-                        ),
-                      );
-                    },
-                  ),
-                ),
-    );
-  }
-}
+                        trailing: _isAdmin
+                            ? Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  IconButton(
+                                    tooltip: 'Edit',
+                                    icon: const Icon(Icons.edit),
+                                    onPressed: () => _edit(film),
+                                  ),
+                                  IconButton(
+                                    tooltip: 'Hapus',
+                                    icon: const Icon(Icons.delete_outline),
+                                    onPressed: () => _delete(film),
+                                  ),
+                                ],
+                              )
+                            : null,
+                       );
+                     },
+                   ),
+                 ),
+     );
+   }
+ }

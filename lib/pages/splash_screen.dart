@@ -1,7 +1,8 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'login_page.dart';
-import 'home_page.dart';
+import 'admin/admin_home_page.dart';
+import 'customer/customer_home_page.dart';
 import '../theme/app_theme.dart';
 import '../api_service.dart';
 
@@ -26,9 +27,16 @@ class _SplashScreenState extends State<SplashScreen> {
     if (!mounted) return;
     if (token != null) {
       api.setToken(token); // set untuk penggunaan selanjutnya
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute(builder: (_) => const HomePage()),
-      );
+      final role = await api.getStoredRole();
+      if (role == 'admin') {
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(builder: (_) => const AdminHomePage()),
+        );
+      } else {
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(builder: (_) => const CustomerHomePage()),
+        );
+      }
     } else {
       Navigator.of(context).pushReplacement(
         MaterialPageRoute(builder: (_) => const LoginPage()),

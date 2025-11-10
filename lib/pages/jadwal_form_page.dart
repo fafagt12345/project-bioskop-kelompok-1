@@ -236,7 +236,7 @@ class _JadwalFormPageState extends State<JadwalFormPage> {
           children: [
             // Studio
             DropdownButtonFormField<int>(
-              value: _studioId,
+              initialValue: _studioId,
               items: _studios.map((s) {
                 final id = s['id'] as int;
                 final nama =
@@ -300,7 +300,7 @@ class _JadwalFormPageState extends State<JadwalFormPage> {
 
             FilledButton.icon(
               style: ButtonStyle(
-                  backgroundColor: MaterialStateProperty.all(primary)),
+                  backgroundColor: WidgetStateProperty.all(primary)),
               onPressed: _loading ? null : _save,
               icon: const Icon(Icons.save),
               label: Text(_loading

@@ -19,11 +19,19 @@ class _JadwalListPageState extends State<JadwalListPage> {
   bool _loading = true;
   String? _error;
   List<Map<String, dynamic>> _rows = [];
+  bool _isAdmin = false;
 
   @override
   void initState() {
     super.initState();
+    _loadRole();
     _load();
+  }
+
+  Future<void> _loadRole() async {
+    final role = await api.getStoredRole();
+    if (!mounted) return;
+    setState(() => _isAdmin = role == 'admin');
   }
 
   Future<void> _load() async {
@@ -123,11 +131,13 @@ class _JadwalListPageState extends State<JadwalListPage> {
         title: Text('Jadwal • ${widget.filmTitle}'),
         backgroundColor: primary,
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: _create,
-        icon: const Icon(Icons.add),
-        label: const Text('Tambah'),
-      ),
+      floatingActionButton: _isAdmin
+          ? FloatingActionButton.extended(
+              onPressed: _create,
+              icon: const Icon(Icons.add),
+              label: const Text('Tambah'),
+            )
+          : null,
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : _error != null
@@ -178,21 +188,23 @@ class _JadwalListPageState extends State<JadwalListPage> {
                                   style: const TextStyle(
                                       fontWeight: FontWeight.w600)),
                               subtitle: Text(studio),
-                              trailing: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  IconButton(
-                                    tooltip: 'Edit',
-                                    icon: const Icon(Icons.edit),
-                                    onPressed: () => _edit(m),
-                                  ),
-                                  IconButton(
-                                    tooltip: 'Hapus',
-                                    icon: const Icon(Icons.delete_outline),
-                                    onPressed: () => _delete(id),
-                                  ),
-                                ],
-                              ),
+                              trailing: _isAdmin
+                                  ? Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        IconButton(
+                                          tooltip: 'Edit',
+                                          icon: const Icon(Icons.edit),
+                                          onPressed: () => _edit(m),
+                                        ),
+                                        IconButton(
+                                          tooltip: 'Hapus',
+                                          icon: const Icon(Icons.delete_outline),
+                                          onPressed: () => _delete(id),
+                                        ),
+                                      ],
+                                    )
+                                  : null,
                             ),
                           );
                         },

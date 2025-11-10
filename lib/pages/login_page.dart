@@ -3,6 +3,8 @@ import '../api_service.dart';
 import 'home_page.dart';
 import 'registration_page.dart';
 import '../theme/app_theme.dart';
+import 'admin/admin_home_page.dart';
+import 'customer/customer_home_page.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -25,12 +27,14 @@ class _LoginPageState extends State<LoginPage> {
       if (user.isEmpty || pass.isEmpty)
         throw Exception('Username/password wajib diisi');
 
-      final token = await api.login(user, pass);
-      api.setToken(token);
-
+      final result = await api.login(user, pass);
+      final role = (result['role'] ?? 'customer').toString();
       if (!mounted) return;
-      Navigator.pushReplacement(
-          context, MaterialPageRoute(builder: (_) => const HomePage()));
+      final target = role == 'admin'
+          ? const AdminHomePage()
+          : const CustomerHomePage();
+      Navigator.pushReplacement(context,
+          MaterialPageRoute(builder: (_) => target));
     } on ApiException catch (e) {
       final msg = (e.status == 401 || e.status == 404)
           ? 'Username atau password salah'

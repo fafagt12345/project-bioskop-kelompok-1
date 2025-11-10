@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import '../api_service.dart';
 import '../theme/app_theme.dart';
+import 'customer/customer_home_page.dart';
+import 'admin/admin_home_page.dart';
 
 class RegistrationPage extends StatefulWidget {
   const RegistrationPage({super.key});
@@ -25,15 +27,16 @@ class _RegistrationPageState extends State<RegistrationPage> {
         throw Exception('Username/password wajib diisi');
       }
 
-      // ⬇️ Perubahan di sini: kirim juga "name"
       final res = await api.register(user, pass, name: user);
-
       if (!mounted) return;
       final msg = (res['message'] ?? 'Registrasi berhasil').toString();
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
 
-      // balik ke halaman login
-      Navigator.pop(context);
+      final loginRes = await api.login(user, pass);
+      final role = (loginRes['role'] ?? 'customer').toString();
+      if (!mounted) return;
+      final target = role == 'admin' ? const AdminHomePage() : const CustomerHomePage();
+      Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => target));
     } on ApiException catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context)
