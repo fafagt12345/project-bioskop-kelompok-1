@@ -191,7 +191,7 @@ class _FilmFormPageState extends State<FilmFormPage> {
               ),
               const SizedBox(height: 12),
               DropdownButtonFormField<int>(
-                initialValue: _selectedGenreId,
+                value: _selectedGenreId,
                 items: _genres.map((g) {
                   final id = (g['id'] is int)
                       ? g['id'] as int
@@ -212,7 +212,7 @@ class _FilmFormPageState extends State<FilmFormPage> {
                 width: double.infinity,
                 child: FilledButton.icon(
                   style: ButtonStyle(
-                      backgroundColor: WidgetStateProperty.all(primary)),
+                      backgroundColor: MaterialStateProperty.all(primary)),
                   onPressed: _saving ? null : _save,
                   icon: const Icon(Icons.save),
                   label: Text(_saving ? 'Menyimpan...' : 'Simpan'),

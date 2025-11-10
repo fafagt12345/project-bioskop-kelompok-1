@@ -288,7 +288,7 @@ class _SeatSelectionPageState extends State<SeatSelectionPage> {
                           'Dipilih: ${_selected.length}  |  Total: Rp $_total')),
                   FilledButton.icon(
                     style: ButtonStyle(
-                        backgroundColor: WidgetStateProperty.all(primary)),
+                        backgroundColor: MaterialStateProperty.all(primary)),
                     onPressed: _selected.isEmpty ? null : _checkout,
                     icon: const Icon(Icons.payment),
                     label: const Text('Checkout'),

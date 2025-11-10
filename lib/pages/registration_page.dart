@@ -11,6 +11,7 @@ class RegistrationPage extends StatefulWidget {
 }
 
 class _RegistrationPageState extends State<RegistrationPage> {
+  final _name = TextEditingController();
   final _username = TextEditingController();
   final _password = TextEditingController();
   bool _loading = false;
@@ -20,14 +21,15 @@ class _RegistrationPageState extends State<RegistrationPage> {
   Future<void> _register() async {
     setState(() => _loading = true);
     try {
+      final name = _name.text.trim();
       final user = _username.text.trim();
       final pass = _password.text.trim();
 
-      if (user.isEmpty || pass.isEmpty) {
-        throw Exception('Username/password wajib diisi');
+      if (name.isEmpty || user.isEmpty || pass.isEmpty) {
+        throw Exception('Nama, username, dan password wajib diisi');
       }
 
-      final res = await api.register(user, pass, name: user);
+      final res = await api.register(user, pass, name: name);
       if (!mounted) return;
       final msg = (res['message'] ?? 'Registrasi berhasil').toString();
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
@@ -54,6 +56,7 @@ class _RegistrationPageState extends State<RegistrationPage> {
 
   @override
   void dispose() {
+    _name.dispose();
     _username.dispose();
     _password.dispose();
     super.dispose();
@@ -69,6 +72,12 @@ class _RegistrationPageState extends State<RegistrationPage> {
         padding: const EdgeInsets.all(16),
         child: Column(
           children: [
+            TextField(
+              controller: _name,
+              textInputAction: TextInputAction.next,
+              decoration: const InputDecoration(labelText: 'Nama'),
+            ),
+            const SizedBox(height: 8),
             TextField(
               controller: _username,
               textInputAction: TextInputAction.next,

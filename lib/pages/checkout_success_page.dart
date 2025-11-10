@@ -70,7 +70,7 @@ class CheckoutSuccessPage extends StatelessWidget {
             const Spacer(),
             FilledButton(
               style: ButtonStyle(
-                  backgroundColor: WidgetStateProperty.all(primary)),
+                  backgroundColor: MaterialStateProperty.all(primary)),
               onPressed: () => Navigator.popUntil(context, (r) => r.isFirst),
               child: const Text('Kembali ke awal'),
             ),
