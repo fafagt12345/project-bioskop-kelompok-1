@@ -159,8 +159,7 @@ class ApiService {
         if (email != null) 'email': email,
       });
       final payload = _toMap(res.data);
-      final role = _extractRole(payload, fallback: 'customer');
-      await setRole(role);
+      await setRole(null);
       return payload;
     } on DioException catch (e) {
       throw _wrap(e);

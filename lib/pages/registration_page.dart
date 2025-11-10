@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
 import '../api_service.dart';
 import '../theme/app_theme.dart';
-import 'customer/customer_home_page.dart';
-import 'admin/admin_home_page.dart';
+import 'login_page.dart';
 
 class RegistrationPage extends StatefulWidget {
   const RegistrationPage({super.key});
@@ -32,13 +31,14 @@ class _RegistrationPageState extends State<RegistrationPage> {
       final res = await api.register(user, pass, name: name);
       if (!mounted) return;
       final msg = (res['message'] ?? 'Registrasi berhasil').toString();
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
-
-      final loginRes = await api.login(user, pass);
-      final role = (loginRes['role'] ?? 'customer').toString();
-      if (!mounted) return;
-      final target = role == 'admin' ? const AdminHomePage() : const CustomerHomePage();
-      Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => target));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('$msg. Silakan login terlebih dahulu.')),
+      );
+      Navigator.pushAndRemoveUntil(
+        context,
+        MaterialPageRoute(builder: (_) => const LoginPage()),
+        (route) => false,
+      );
     } on ApiException catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context)
