@@ -22,6 +22,8 @@ class SeatSelectionPage extends StatefulWidget {
 class _SeatSelectionPageState extends State<SeatSelectionPage> {
   final api = ApiService();
 
+  String? _role; // tersimpan role user (admin/customer)
+
   bool _loading = true;
   String? _error;
 
@@ -35,7 +37,18 @@ class _SeatSelectionPageState extends State<SeatSelectionPage> {
   @override
   void initState() {
     super.initState();
+    _loadRole();
     _load();
+  }
+
+  Future<void> _loadRole() async {
+    try {
+      final r = await api.getStoredRole();
+      if (!mounted) return;
+      setState(() => _role = r);
+    } catch (_) {
+      // ignore
+    }
   }
 
   int _asInt(dynamic v) {
@@ -205,11 +218,26 @@ class _SeatSelectionPageState extends State<SeatSelectionPage> {
 
   Future<void> _checkout() async {
     if (_selected.isEmpty) return;
+    if (_role != null && _role == 'admin') {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+            content: Text('Akun admin tidak diperbolehkan melakukan checkout')),
+      );
+      return;
+    }
 
     try {
+      final storedCust = await api.getStoredCustomerId();
+      if (storedCust == null) {
+        // minta user untuk login ulang / sinkron
+        throw Exception(
+            'Customer belum tersinkron. Silakan login ulang agar akun disinkronkan.');
+      }
+
       // NOTE: sesuaikan customerId dengan user yang login
       final res = await api.checkout(
-        customerId: 1,
+        customerId: storedCust,
         jadwalId: widget.jadwalId,
         kursiIds: _selected.toList(),
       );
@@ -278,6 +306,15 @@ class _SeatSelectionPageState extends State<SeatSelectionPage> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
+              if (_role == 'admin')
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 8.0),
+                  child: Text(
+                    'Catatan: akun admin tidak dapat melakukan pembelian tiket.',
+                    style: TextStyle(color: Colors.red.shade600),
+                    textAlign: TextAlign.center,
+                  ),
+                ),
               Text('Kursi: $_selectedLabels',
                   style: const TextStyle(fontWeight: FontWeight.w600)),
               const SizedBox(height: 6),
@@ -289,7 +326,9 @@ class _SeatSelectionPageState extends State<SeatSelectionPage> {
                   FilledButton.icon(
                     style: ButtonStyle(
                         backgroundColor: MaterialStateProperty.all(primary)),
-                    onPressed: _selected.isEmpty ? null : _checkout,
+                    onPressed: (_selected.isEmpty || _role == 'admin')
+                        ? null
+                        : _checkout,
                     icon: const Icon(Icons.payment),
                     label: const Text('Checkout'),
                   ),

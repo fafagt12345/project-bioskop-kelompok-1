@@ -14,15 +14,41 @@ class _AdminHomePageState extends State<AdminHomePage> {
   final api = ApiService();
   bool _signingOut = false;
 
-  Future<void> _logout() async {
+  Future<void> _confirmAndLogout() async {
     if (_signingOut) return;
+    final sure = await showDialog<bool>(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            title: const Text('Konfirmasi Logout'),
+            content: const Text('Apakah Anda yakin ingin keluar dari akun?'),
+            actions: [
+              TextButton(
+                  onPressed: () => Navigator.pop(ctx, false),
+                  child: const Text('Batal')),
+              FilledButton(
+                  onPressed: () => Navigator.pop(ctx, true),
+                  child: const Text('Logout')),
+            ],
+          ),
+        ) ??
+        false;
+    if (!sure) return;
     setState(() => _signingOut = true);
-    await api.logout();
-    if (!mounted) return;
-    Navigator.of(context).pushAndRemoveUntil(
-      MaterialPageRoute(builder: (_) => const LoginPage()),
-      (_) => false,
-    );
+    try {
+      await api.logout();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context)
+          .showSnackBar(const SnackBar(content: Text('Berhasil logout')));
+      Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (_) => const LoginPage()), (_) => false);
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(const SnackBar(content: Text('Logout gagal')));
+      }
+    } finally {
+      if (mounted) setState(() => _signingOut = false);
+    }
   }
 
   @override
@@ -31,10 +57,11 @@ class _AdminHomePageState extends State<AdminHomePage> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Admin Dashboard'),
+        automaticallyImplyLeading: false, // hilangkan tombol kembali
         backgroundColor: primary,
         actions: [
           IconButton(
-            onPressed: _signingOut ? null : _logout,
+            onPressed: _signingOut ? null : _confirmAndLogout,
             icon: _signingOut
                 ? const SizedBox(
                     width: 20,

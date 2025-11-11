@@ -106,6 +106,7 @@ class ApiService {
   // ===== TOKEN STORAGE =====
   static const _tokenKey = 'auth_token';
   static const _roleKey = 'auth_role';
+  static const _customerKey = 'auth_customer_id';
 
   Future<String?> getStoredRole() async {
     final prefs = await SharedPreferences.getInstance();
@@ -133,6 +134,21 @@ class ApiService {
       await prefs.setString(_tokenKey, token);
     } else {
       await prefs.remove(_tokenKey);
+    }
+  }
+
+  Future<int?> getStoredCustomerId() async {
+    final prefs = await SharedPreferences.getInstance();
+    final v = prefs.getInt(_customerKey);
+    return v;
+  }
+
+  Future<void> setCustomerId(int? id) async {
+    final prefs = await SharedPreferences.getInstance();
+    if (id != null) {
+      await prefs.setInt(_customerKey, id);
+    } else {
+      await prefs.remove(_customerKey);
     }
   }
 
@@ -182,6 +198,17 @@ class ApiService {
         fallback: username == 'admin' ? 'admin' : 'customer',
       );
       await setRole(role);
+
+      // jika server mengembalikan customer_id, simpan
+      final cust = payload['customer_id'];
+      if (cust is int) {
+        await setCustomerId(cust);
+      } else if (cust is String && int.tryParse(cust) != null) {
+        await setCustomerId(int.parse(cust));
+      } else {
+        await setCustomerId(null);
+      }
+
       return {'token': token, 'role': role, 'raw': payload};
     } on DioException catch (e) {
       if (username == 'admin' && password == 'admin123') {
