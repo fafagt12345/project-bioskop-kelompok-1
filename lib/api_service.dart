@@ -150,6 +150,7 @@ class ApiService {
     String password, {
     String? name,
     String? email,
+    String? noHp, // <-- tambahkan parameter noHp
   }) async {
     try {
       final res = await _dio.post('/auth/register', data: {
@@ -157,6 +158,7 @@ class ApiService {
         'password': password,
         if (name != null) 'name': name,
         if (email != null) 'email': email,
+        if (noHp != null) 'no_hp': noHp, // <-- kirim no_hp
       });
       final payload = _toMap(res.data);
       await setRole(null);
@@ -508,7 +510,8 @@ class ApiService {
   Map<String, dynamic> _toMap(dynamic d) =>
       (d is Map<String, dynamic>) ? d : Map<String, dynamic>.from(d as Map);
 
-  String _extractRole(Map<String, dynamic> payload, {String fallback = 'customer'}) {
+  String _extractRole(Map<String, dynamic> payload,
+      {String fallback = 'customer'}) {
     final direct = payload['role'];
     if (direct is String && direct.isNotEmpty) return direct;
     final user = payload['user'];

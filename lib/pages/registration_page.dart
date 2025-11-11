@@ -13,6 +13,8 @@ class _RegistrationPageState extends State<RegistrationPage> {
   final _name = TextEditingController();
   final _username = TextEditingController();
   final _password = TextEditingController();
+  final _email = TextEditingController();
+  final _noHp = TextEditingController();
   bool _loading = false;
   bool _obscurePassword = true;
   final api = ApiService();
@@ -23,12 +25,27 @@ class _RegistrationPageState extends State<RegistrationPage> {
       final name = _name.text.trim();
       final user = _username.text.trim();
       final pass = _password.text.trim();
+      final email = _email.text.trim();
+      final noHp = _noHp.text.trim();
 
-      if (name.isEmpty || user.isEmpty || pass.isEmpty) {
-        throw Exception('Nama, username, dan password wajib diisi');
+      if (name.isEmpty ||
+          user.isEmpty ||
+          pass.isEmpty ||
+          email.isEmpty ||
+          noHp.isEmpty) {
+        throw Exception(
+            'Nama, username, password, email, dan No. HP wajib diisi');
+      }
+      // simple email format check
+      final emailPattern = RegExp(r'^[^@]+@[^@]+\.[^@]+');
+      if (!emailPattern.hasMatch(email)) {
+        throw Exception('Format email tidak valid');
       }
 
-      final res = await api.register(user, pass, name: name);
+      final res = await api.register(user, pass,
+          name: name,
+          email: email.isEmpty ? null : email,
+          noHp: noHp.isEmpty ? null : noHp);
       if (!mounted) return;
       final msg = (res['message'] ?? 'Registrasi berhasil').toString();
       ScaffoldMessenger.of(context).showSnackBar(
@@ -59,6 +76,8 @@ class _RegistrationPageState extends State<RegistrationPage> {
     _name.dispose();
     _username.dispose();
     _password.dispose();
+    _email.dispose();
+    _noHp.dispose();
     super.dispose();
   }
 
@@ -82,6 +101,20 @@ class _RegistrationPageState extends State<RegistrationPage> {
               controller: _username,
               textInputAction: TextInputAction.next,
               decoration: const InputDecoration(labelText: 'Username'),
+            ),
+            const SizedBox(height: 8),
+            TextField(
+              controller: _email,
+              keyboardType: TextInputType.emailAddress,
+              textInputAction: TextInputAction.next,
+              decoration: const InputDecoration(labelText: 'Email'),
+            ),
+            const SizedBox(height: 8),
+            TextField(
+              controller: _noHp,
+              keyboardType: TextInputType.phone,
+              textInputAction: TextInputAction.next,
+              decoration: const InputDecoration(labelText: 'No. HP'),
             ),
             const SizedBox(height: 8),
             TextField(
