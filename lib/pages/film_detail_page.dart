@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../api_service.dart';
 import 'jadwal_list_page.dart';
 import '../theme/app_theme.dart';
+import 'package:intl/intl.dart';
 
 class FilmDetailPage extends StatefulWidget {
   final int filmId;
@@ -19,9 +20,18 @@ class _FilmDetailPageState extends State<FilmDetailPage> {
   String? _error;
   String? _genreName;
 
+  // COMMENTS
+  List<Map<String, dynamic>> _comments = [];
+  bool _loadingComments = true;
+  final _commentCtl = TextEditingController();
+  int? _commentRating;
+  String _commentSort = 'newest'; // or 'oldest'
+  int? _currentUserId; // users pk dari login (disimpan oleh ApiService)
+
   @override
   void initState() {
     super.initState();
+    _initUser();
     if (widget.initial != null) {
       _film = Map<String, dynamic>.from(widget.initial!);
       _genreName =
@@ -31,6 +41,25 @@ class _FilmDetailPageState extends State<FilmDetailPage> {
     _load();
   }
 
+  Future<void> _initUser() async {
+    final uid = await api.getStoredUserId();
+    if (!mounted) return;
+    setState(() => _currentUserId = uid);
+  }
+
+  Future<void> _loadComments() async {
+    setState(() => _loadingComments = true);
+    try {
+      final list = await api.commentsList(widget.filmId, sort: _commentSort);
+      setState(() =>
+          _comments = list.map((e) => Map<String, dynamic>.from(e)).toList());
+    } catch (e) {
+      // ignore or show inline
+    } finally {
+      if (mounted) setState(() => _loadingComments = false);
+    }
+  }
+
   Future<void> _load() async {
     setState(() {
       _loading = true;
@@ -38,6 +67,7 @@ class _FilmDetailPageState extends State<FilmDetailPage> {
     });
     try {
       final data = await api.filmDetail(widget.filmId);
+      await _loadComments();
 
       // 1) nama genre dari payload (jika controller sudah join)
       String? gName =
@@ -62,6 +92,16 @@ class _FilmDetailPageState extends State<FilmDetailPage> {
     } finally {
       if (!mounted) return;
       setState(() => _loading = false);
+    }
+  }
+
+  String _fmtDate(String d) {
+    if (d.isEmpty) return '';
+    try {
+      final dt = DateTime.parse(d);
+      return DateFormat.yMMMd().format(dt);
+    } catch (_) {
+      return d;
     }
   }
 
@@ -115,6 +155,154 @@ class _FilmDetailPageState extends State<FilmDetailPage> {
         ),
       ),
     );
+  }
+
+  Future<void> _submitComment() async {
+    final text = _commentCtl.text.trim();
+    if (text.isEmpty) return;
+    try {
+      final res = await api.postComment(
+          filmId: widget.filmId, isi: text, rating: _commentRating);
+
+      // jika server mengembalikan objek komentar, tambahkan ke list lokal langsung
+      if (res is Map<String, dynamic>) {
+        final newComment = Map<String, dynamic>.from(res);
+        setState(() {
+          _comments.insert(0, newComment);
+        });
+      } else {
+        // fallback: reload jika respons tidak seperti yang diharapkan
+        await _loadComments();
+      }
+
+      _commentCtl.clear();
+      _commentRating = null;
+      ScaffoldMessenger.of(context)
+          .showSnackBar(const SnackBar(content: Text('Komentar terkirim')));
+    } on ApiException catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Gagal kirim komentar: ${e.message}')));
+    } catch (e) {
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text('Gagal kirim komentar: $e')));
+    }
+  }
+
+  Future<void> _editComment(Map<String, dynamic> c) async {
+    final ctl =
+        TextEditingController(text: c['isi_komentar']?.toString() ?? '');
+    int? rating = c['rating'] is int
+        ? c['rating'] as int
+        : (int.tryParse('${c['rating'] ?? ''}') ?? null);
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (ctx) {
+        return StatefulBuilder(builder: (ctx2, setStateDialog) {
+          return AlertDialog(
+            title: const Text('Edit Komentar'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(controller: ctl, maxLines: 4),
+                const SizedBox(height: 8),
+                Row(
+                  children: List.generate(5, (i) {
+                    final val = i + 1;
+                    return IconButton(
+                      icon: Icon(
+                        val <= (rating ?? 0) ? Icons.star : Icons.star_border,
+                        color: Colors.amber,
+                      ),
+                      onPressed: () => setStateDialog(() => rating = val),
+                    );
+                  }),
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                  onPressed: () => Navigator.pop(ctx, false),
+                  child: const Text('Batal')),
+              FilledButton(
+                  onPressed: () => Navigator.pop(ctx, true),
+                  child: const Text('Simpan')),
+            ],
+          );
+        });
+      },
+    );
+    if (ok != true) return;
+    try {
+      final res = await api.updateComment(
+          id: c['komentar_id'], isi: ctl.text.trim(), rating: rating);
+
+      if (res is Map<String, dynamic>) {
+        final updated = Map<String, dynamic>.from(res);
+        // set edited flag if server tidak memberikan
+        if (!updated.containsKey('edited')) updated['edited'] = true;
+        // update lokal: cari index berdasarkan komentar_id dan ganti
+        final idx = _comments.indexWhere((e) =>
+            (e['komentar_id'] ?? e['id'] ?? e['komentarId']) ==
+            (updated['komentar_id'] ?? updated['id'] ?? updated['komentarId']));
+        setState(() {
+          if (idx >= 0)
+            _comments[idx] = updated;
+          else
+            _comments.insert(0, updated);
+        });
+      } else {
+        // fallback: reload list
+        await _loadComments();
+      }
+
+      ScaffoldMessenger.of(context)
+          .showSnackBar(const SnackBar(content: Text('Komentar diperbarui')));
+    } on ApiException catch (e) {
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text('Gagal update: ${e.message}')));
+    } catch (e) {
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text('Gagal update: $e')));
+    }
+  }
+
+  Future<void> _deleteComment(Map<String, dynamic> c) async {
+    final sure = await showDialog<bool>(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            title: const Text('Hapus Komentar'),
+            content: const Text('Yakin ingin menghapus komentar ini?'),
+            actions: [
+              TextButton(
+                  onPressed: () => Navigator.pop(ctx, false),
+                  child: const Text('Batal')),
+              FilledButton(
+                  onPressed: () => Navigator.pop(ctx, true),
+                  child: const Text('Hapus')),
+            ],
+          ),
+        ) ??
+        false;
+    if (!sure) return;
+    try {
+      await api.deleteComment(c['komentar_id']);
+
+      // hapus secara lokal agar update langsung terlihat
+      setState(() {
+        _comments.removeWhere((e) =>
+            (e['komentar_id'] ?? e['id'] ?? e['komentarId']) ==
+            (c['komentar_id'] ?? c['id'] ?? c['komentarId']));
+      });
+
+      ScaffoldMessenger.of(context)
+          .showSnackBar(const SnackBar(content: Text('Komentar dihapus')));
+    } on ApiException catch (e) {
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text('Gagal hapus: ${e.message}')));
+    } catch (e) {
+      ScaffoldMessenger.of(context)
+          .showSnackBar(SnackBar(content: Text('Gagal hapus: $e')));
+    }
   }
 
   @override
@@ -194,6 +382,194 @@ class _FilmDetailPageState extends State<FilmDetailPage> {
                           ),
                         ),
                       ),
+                      // Komentar Section
+                      const SizedBox(height: 12),
+                      Card(
+                        child: Padding(
+                          padding: const EdgeInsets.all(12.0),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
+                                children: [
+                                  const Text('Komentar',
+                                      style: TextStyle(
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.w700)),
+                                  DropdownButton<String>(
+                                    value: _commentSort,
+                                    items: const [
+                                      DropdownMenuItem(
+                                          value: 'newest',
+                                          child: Text('Terbaru')),
+                                      DropdownMenuItem(
+                                          value: 'oldest',
+                                          child: Text('Terlama')),
+                                    ],
+                                    onChanged: (v) {
+                                      setState(
+                                          () => _commentSort = v ?? 'newest');
+                                      _loadComments();
+                                    },
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 8),
+                              // Add comment input
+                              TextField(
+                                controller: _commentCtl,
+                                maxLines: 3,
+                                decoration: const InputDecoration(
+                                    hintText: 'Tulis komentar...'),
+                              ),
+                              const SizedBox(height: 8),
+                              Row(
+                                children: [
+                                  // star rating simple
+                                  Row(
+                                      children: List.generate(5, (i) {
+                                    final val = i + 1;
+                                    return IconButton(
+                                      icon: Icon(
+                                          val <= (_commentRating ?? 0)
+                                              ? Icons.star
+                                              : Icons.star_border,
+                                          color: Colors.amber),
+                                      onPressed: () =>
+                                          setState(() => _commentRating = val),
+                                    );
+                                  })),
+                                  const Spacer(),
+                                  FilledButton(
+                                      onPressed: _submitComment,
+                                      child: const Text('Kirim'))
+                                ],
+                              ),
+                              const Divider(),
+                              // Comments list
+                              if (_loadingComments)
+                                const Center(child: CircularProgressIndicator())
+                              else if (_comments.isEmpty)
+                                const Text(
+                                    'Belum ada komentar. Jadilah yang pertama!')
+                              else
+                                Column(
+                                  children: _comments.map((c) {
+                                    // prefer commenter_profile from server: display_name + is_admin
+                                    final cp = (c['commenter_profile'] is Map)
+                                        ? Map<String, dynamic>.from(
+                                            c['commenter_profile'])
+                                        : <String, dynamic>{};
+                                    final commenterName =
+                                        (cp['name'] as String?) ??
+                                            (c['commenter_name'] as String?) ??
+                                            'Anonim';
+                                    final displayName =
+                                        (cp['display_name'] as String?) ??
+                                            commenterName;
+                                    final isAdmin = (cp['is_admin'] == true);
+                                    final edited = (c['edited'] == true);
+                                    final uid = cp['id'] ?? c['users_id'];
+                                    final date = _fmtDate(
+                                        c['tanggal']?.toString() ?? '');
+                                    final content =
+                                        c['isi_komentar']?.toString() ?? '';
+                                    final rating = c['rating'];
+                                    final isOwner = _currentUserId != null &&
+                                        (c['users_id'] != null) &&
+                                        (_currentUserId ==
+                                            (c['users_id'] is int
+                                                ? c['users_id']
+                                                : int.tryParse(
+                                                    '${c['users_id']}')));
+                                    // avatar inisial dari nama
+                                    String initials(String s) {
+                                      final parts = s.trim().split(' ');
+                                      if (parts.length >= 2)
+                                        return '${parts[0][0]}${parts[1][0]}'
+                                            .toUpperCase();
+                                      return s.isNotEmpty
+                                          ? s[0].toUpperCase()
+                                          : '?';
+                                    }
+
+                                    return ListTile(
+                                      leading: CircleAvatar(
+                                        backgroundColor: Colors.grey.shade200,
+                                        child: Text(initials(commenterName),
+                                            style: TextStyle(
+                                                color: Colors.black87)),
+                                      ),
+                                      title: Row(
+                                        children: [
+                                          Expanded(
+                                              child: Text(displayName,
+                                                  style: const TextStyle(
+                                                      fontWeight:
+                                                          FontWeight.w600))),
+                                          if (edited)
+                                            Padding(
+                                              padding: const EdgeInsets.only(
+                                                  left: 8.0),
+                                              child: Text('(diedit)',
+                                                  style: TextStyle(
+                                                      fontSize: 12,
+                                                      color: Colors
+                                                          .grey.shade600)),
+                                            ),
+                                        ],
+                                      ),
+                                      subtitle: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          if (rating != null)
+                                            Row(
+                                                children: List.generate(
+                                                    5,
+                                                    (i) => Icon(
+                                                        i < (rating as int)
+                                                            ? Icons.star
+                                                            : Icons.star_border,
+                                                        size: 16,
+                                                        color: Colors.amber))),
+                                          const SizedBox(height: 4),
+                                          Text(content),
+                                          const SizedBox(height: 6),
+                                          Text(date,
+                                              style: TextStyle(
+                                                  fontSize: 12,
+                                                  color: Colors.grey.shade600)),
+                                        ],
+                                      ),
+                                      trailing: isOwner
+                                          ? PopupMenuButton<String>(
+                                              onSelected: (v) {
+                                                if (v == 'edit')
+                                                  _editComment(c);
+                                                if (v == 'delete')
+                                                  _deleteComment(c);
+                                              },
+                                              itemBuilder: (_) => const [
+                                                PopupMenuItem(
+                                                    value: 'edit',
+                                                    child: Text('Edit')),
+                                                PopupMenuItem(
+                                                    value: 'delete',
+                                                    child: Text('Hapus')),
+                                              ],
+                                            )
+                                          : null,
+                                    );
+                                  }).toList(),
+                                ),
+                            ],
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 20),
                     ],
                   ),
                 ),

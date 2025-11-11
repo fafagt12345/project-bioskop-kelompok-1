@@ -85,7 +85,12 @@ class ApiService {
           ),
         ) {
     _dio.interceptors.add(InterceptorsWrapper(
-      onRequest: (opt, handler) {
+      // make onRequest async so we can ensure correct identity header:
+      // Determine Authorization header from stored token and userId:
+      // - if token is numeric -> use it
+      // - else if userId exists -> use userId (preferred when server does not persist api_token)
+      // - else use token (string)
+      onRequest: (opt, handler) async {
         if (!opt.path.startsWith('http')) {
           final prefix = base ?? suggestBaseUrl();
           final norm = opt.path.startsWith('/api/')
@@ -94,8 +99,39 @@ class ApiService {
           opt.baseUrl = prefix;
           opt.path = norm;
         }
+        try {
+          final prefs = await SharedPreferences.getInstance();
+          final storedToken = prefs.getString(_tokenKey);
+          final storedUid = prefs.getInt(_userIdKey);
+
+          String? headerValue;
+          if (storedToken != null && storedToken.isNotEmpty) {
+            // token exists: if it's purely numeric use it; otherwise prefer numeric userId if available
+            final isNumericToken = RegExp(r'^\d+$').hasMatch(storedToken);
+            if (isNumericToken) {
+              headerValue = storedToken;
+            } else if (storedUid != null) {
+              headerValue = storedUid.toString();
+            } else {
+              headerValue = storedToken;
+            }
+          } else if (storedUid != null) {
+            headerValue = storedUid.toString();
+          }
+
+          if (headerValue != null && headerValue.isNotEmpty) {
+            _token =
+                headerValue; // cache chosen header token (numeric or string)
+          } else {
+            _token = null;
+          }
+        } catch (_) {
+          // ignore prefs errors
+        }
         if (_token != null && _token!.isNotEmpty) {
           opt.headers['Authorization'] = 'Bearer $_token';
+        } else {
+          opt.headers.remove('Authorization');
         }
         handler.next(opt);
       },
@@ -107,6 +143,7 @@ class ApiService {
   static const _tokenKey = 'auth_token';
   static const _roleKey = 'auth_role';
   static const _customerKey = 'auth_customer_id';
+  static const _userIdKey = 'auth_user_id';
 
   Future<String?> getStoredRole() async {
     final prefs = await SharedPreferences.getInstance();
@@ -152,12 +189,30 @@ class ApiService {
     }
   }
 
+  Future<int?> getStoredUserId() async {
+    final prefs = await SharedPreferences.getInstance();
+    final v = prefs.getInt(_userIdKey);
+    return v;
+  }
+
+  Future<void> setUserId(int? id) async {
+    final prefs = await SharedPreferences.getInstance();
+    if (id != null) {
+      await prefs.setInt(_userIdKey, id);
+    } else {
+      await prefs.remove(_userIdKey);
+    }
+  }
+
   Future<void> logout() async {
     try {
       await _dio.post('/auth/logout');
     } catch (_) {}
     await setToken(null);
     await setRole(null);
+    // pastikan juga hapus stored user/customer id saat logout
+    await setUserId(null);
+    await setCustomerId(null);
   }
 
   // ===== AUTH =====
@@ -209,12 +264,30 @@ class ApiService {
         await setCustomerId(null);
       }
 
+      // simpan user.id bila server kembalikan user payload
+      final userMap = payload['user'];
+      if (userMap is Map) {
+        final idVal = userMap['id'];
+        if (idVal is int)
+          await setUserId(idVal);
+        else if (idVal is String && int.tryParse(idVal) != null) {
+          await setUserId(int.parse(idVal));
+        } else {
+          await setUserId(null);
+        }
+      } else {
+        await setUserId(null);
+      }
+
       return {'token': token, 'role': role, 'raw': payload};
     } on DioException catch (e) {
       if (username == 'admin' && password == 'admin123') {
         const localToken = 'local-admin-token';
         await setToken(localToken);
         await setRole('admin');
+        // simpan userId admin (1) agar client menggunakan user id yang sesuai
+        await setUserId(1);
+        await setCustomerId(null);
         return {'token': localToken, 'role': 'admin', 'raw': const {}};
       }
       throw _wrap(e);
@@ -522,6 +595,59 @@ class ApiService {
       }
     } catch (_) {}
     return null;
+  }
+
+  // ===== COMMENTS =====
+  Future<List<Map<String, dynamic>>> commentsList(int filmId,
+      {String sort = 'newest'}) async {
+    try {
+      final res = await _dio
+          .get('/komentar', queryParameters: {'film_id': filmId, 'sort': sort});
+      final raw = res.data;
+      final list = (raw is List)
+          ? raw
+          : (raw is Map && raw['data'] is List ? raw['data'] : const []);
+      return (list as List)
+          .map((e) => Map<String, dynamic>.from(e as Map))
+          .toList();
+    } on DioException catch (e) {
+      throw _wrap(e);
+    }
+  }
+
+  Future<Map<String, dynamic>> postComment(
+      {required int filmId, required String isi, int? rating}) async {
+    try {
+      final res = await _dio.post('/komentar', data: {
+        'film_id': filmId,
+        'isi_komentar': isi,
+        if (rating != null) 'rating': rating,
+      });
+      return _toMap(res.data);
+    } on DioException catch (e) {
+      throw _wrap(e);
+    }
+  }
+
+  Future<Map<String, dynamic>> updateComment(
+      {required int id, required String isi, int? rating}) async {
+    try {
+      final res = await _dio.put('/komentar/$id', data: {
+        'isi_komentar': isi,
+        if (rating != null) 'rating': rating,
+      });
+      return _toMap(res.data);
+    } on DioException catch (e) {
+      throw _wrap(e);
+    }
+  }
+
+  Future<void> deleteComment(int id) async {
+    try {
+      await _dio.delete('/komentar/$id');
+    } on DioException catch (e) {
+      throw _wrap(e);
+    }
   }
 
   // ===== Utils =====
