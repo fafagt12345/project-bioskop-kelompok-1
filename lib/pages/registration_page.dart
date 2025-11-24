@@ -83,64 +83,77 @@ class _RegistrationPageState extends State<RegistrationPage> {
 
   @override
   Widget build(BuildContext context) {
-    final primary = AppTheme.light.colorScheme.primary;
+    final cs = Theme.of(context).colorScheme;
     return Scaffold(
-      backgroundColor: primary.withOpacity(0.04),
-      appBar: AppBar(title: const Text('Daftar'), backgroundColor: primary),
-      body: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          children: [
-            TextField(
-              controller: _name,
-              textInputAction: TextInputAction.next,
-              decoration: const InputDecoration(labelText: 'Nama'),
-            ),
-            const SizedBox(height: 8),
-            TextField(
-              controller: _username,
-              textInputAction: TextInputAction.next,
-              decoration: const InputDecoration(labelText: 'Username'),
-            ),
-            const SizedBox(height: 8),
-            TextField(
-              controller: _email,
-              keyboardType: TextInputType.emailAddress,
-              textInputAction: TextInputAction.next,
-              decoration: const InputDecoration(labelText: 'Email'),
-            ),
-            const SizedBox(height: 8),
-            TextField(
-              controller: _noHp,
-              keyboardType: TextInputType.phone,
-              textInputAction: TextInputAction.next,
-              decoration: const InputDecoration(labelText: 'No. HP'),
-            ),
-            const SizedBox(height: 8),
-            TextField(
-              controller: _password,
-              decoration: InputDecoration(
-                labelText: 'Password',
-                suffixIcon: IconButton(
-                  icon: Icon(_obscurePassword
-                      ? Icons.visibility_off
-                      : Icons.visibility),
-                  onPressed: () =>
-                      setState(() => _obscurePassword = !_obscurePassword),
-                ),
+      backgroundColor: cs.background,
+      body: ListView(
+        padding: const EdgeInsets.fromLTRB(18, 60, 18, 30),
+        children: [
+          Card(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+            elevation: 4,
+            child: Padding(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                children: [
+                  const Text('Daftar Akun',
+                      style:
+                          TextStyle(fontSize: 22, fontWeight: FontWeight.w700)),
+                  const SizedBox(height: 18),
+                  TextField(
+                    controller: _name,
+                    textInputAction: TextInputAction.next,
+                    decoration: const InputDecoration(labelText: 'Nama'),
+                  ),
+                  const SizedBox(height: 8),
+                  TextField(
+                    controller: _username,
+                    textInputAction: TextInputAction.next,
+                    decoration: const InputDecoration(labelText: 'Username'),
+                  ),
+                  const SizedBox(height: 8),
+                  TextField(
+                    controller: _email,
+                    keyboardType: TextInputType.emailAddress,
+                    textInputAction: TextInputAction.next,
+                    decoration: const InputDecoration(labelText: 'Email'),
+                  ),
+                  const SizedBox(height: 8),
+                  TextField(
+                    controller: _noHp,
+                    keyboardType: TextInputType.phone,
+                    textInputAction: TextInputAction.next,
+                    decoration: const InputDecoration(labelText: 'No. HP'),
+                  ),
+                  const SizedBox(height: 8),
+                  TextField(
+                    controller: _password,
+                    decoration: InputDecoration(
+                      labelText: 'Password',
+                      suffixIcon: IconButton(
+                        icon: Icon(_obscurePassword
+                            ? Icons.visibility_off
+                            : Icons.visibility),
+                        onPressed: () => setState(
+                            () => _obscurePassword = !_obscurePassword),
+                      ),
+                    ),
+                    obscureText: _obscurePassword,
+                    onSubmitted: (_) => _register(),
+                  ),
+                  const SizedBox(height: 20),
+                  FilledButton(
+                    style: ButtonStyle(
+                        backgroundColor:
+                            MaterialStateProperty.all(cs.primary)),
+                    onPressed: _loading ? null : _register,
+                    child: Text(_loading ? 'Mendaftar...' : 'Daftar'),
+                  ),
+                ],
               ),
-              obscureText: _obscurePassword,
-              onSubmitted: (_) => _register(),
             ),
-            const SizedBox(height: 16),
-            FilledButton(
-              style: ButtonStyle(
-                  backgroundColor: MaterialStateProperty.all(primary)),
-              onPressed: _loading ? null : _register,
-              child: Text(_loading ? 'Mendaftar...' : 'Daftar'),
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

@@ -307,7 +307,12 @@ class _FilmDetailPageState extends State<FilmDetailPage> {
 
   @override
   Widget build(BuildContext context) {
-    final primary = AppTheme.light.colorScheme.primary;
+    final theme = Theme.of(context);
+    final cs = theme.colorScheme;
+    final isLight = theme.brightness == Brightness.light;
+    final infoColor = theme.cardColor;
+    final outlineColor = cs.outlineVariant.withOpacity(isLight ? .35 : .55);
+
     final title =
         (_film?['judul'] ?? _film?['title'] ?? 'Detail Film').toString();
     final sinopsis = (_film?['sinopsis'] ?? '').toString();
@@ -315,13 +320,12 @@ class _FilmDetailPageState extends State<FilmDetailPage> {
     final cover = _assetForFilm(_film);
 
     return Scaffold(
-      appBar: AppBar(title: Text(title), backgroundColor: primary),
+      backgroundColor: Theme.of(context).colorScheme.background,
+      appBar: AppTheme.buildGradientAppBar(context, title),
       bottomNavigationBar: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(12),
           child: FilledButton.icon(
-            style: ButtonStyle(
-                backgroundColor: MaterialStateProperty.all(primary)),
             onPressed: _film == null
                 ? null
                 : () {
@@ -340,291 +344,238 @@ class _FilmDetailPageState extends State<FilmDetailPage> {
       ),
       body: _loading && _film == null
           ? const Center(child: CircularProgressIndicator())
-          : _error != null
-              ? Center(child: Text('Gagal memuat: $_error'))
-              : RefreshIndicator(
-                  onRefresh: _load,
-                  child: ListView(
-                    padding: const EdgeInsets.all(16),
-                    children: [
-                      if (cover != null) _buildCoverWidget(cover),
-                      if (cover != null) const SizedBox(height: 12),
-                      Card(
-                        elevation: 2,
-                        shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12)),
-                        child: Padding(
-                          padding: const EdgeInsets.all(16),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
+          : RefreshIndicator(
+              onRefresh: _load,
+              child: ListView(
+                padding: const EdgeInsets.all(16),
+                children: [
+                  if (cover != null) _buildCoverWidget(cover),
+                  const SizedBox(height: 12),
+                  Container(
+                    decoration: BoxDecoration(
+                      color: infoColor,
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: outlineColor),
+                    ),
+                    padding: const EdgeInsets.all(20),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(title,
+                            style: const TextStyle(
+                                fontSize: 20,
+                                fontWeight: FontWeight.w700)),
+                        const SizedBox(height: 8),
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: [
+                            _Chip(label: 'Durasi: ${durasi}m'),
+                            if (_genreName != null)
+                              _Chip(label: 'Genre: ${_genreName!}'),
+                          ],
+                        ),
+                        const SizedBox(height: 16),
+                        const Text('Sinopsis',
+                            style:
+                                TextStyle(fontWeight: FontWeight.w600)),
+                        const SizedBox(height: 8),
+                        Text(sinopsis.isEmpty ? '-' : sinopsis),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  Card(
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                    elevation: 4,
+                    child: Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            mainAxisAlignment:
+                                MainAxisAlignment.spaceBetween,
                             children: [
-                              Text(title,
-                                  style: const TextStyle(
-                                      fontSize: 20,
+                              const Text('Komentar',
+                                  style: TextStyle(
+                                      fontSize: 16,
                                       fontWeight: FontWeight.w700)),
-                              const SizedBox(height: 8),
-                              Wrap(
-                                spacing: 8,
-                                runSpacing: 8,
-                                children: [
-                                  _Chip(label: 'Durasi: ${durasi}m'),
-                                  if (_genreName != null)
-                                    _Chip(label: 'Genre: ${_genreName!}'),
+                              DropdownButton<String>(
+                                value: _commentSort,
+                                items: const [
+                                  DropdownMenuItem(
+                                      value: 'newest',
+                                      child: Text('Terbaru')),
+                                  DropdownMenuItem(
+                                      value: 'oldest',
+                                      child: Text('Terlama')),
                                 ],
+                                onChanged: (v) {
+                                  setState(
+                                      () => _commentSort = v ?? 'newest');
+                                  _loadComments();
+                                },
                               ),
-                              const SizedBox(height: 16),
-                              const Text('Sinopsis',
-                                  style:
-                                      TextStyle(fontWeight: FontWeight.w600)),
-                              const SizedBox(height: 8),
-                              Text(sinopsis.isEmpty ? '-' : sinopsis),
                             ],
                           ),
-                        ),
-                      ),
-                      // Komentar Section
-                      const SizedBox(height: 12),
-                      Card(
-                        child: Padding(
-                          padding: const EdgeInsets.all(12.0),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
+                          const SizedBox(height: 8),
+                          // Add comment input
+                          TextField(
+                            controller: _commentCtl,
+                            maxLines: 3,
+                            decoration: const InputDecoration(
+                                hintText: 'Tulis komentar...'),
+                          ),
+                          const SizedBox(height: 8),
+                          Row(
                             children: [
+                              // star rating simple
                               Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceBetween,
-                                children: [
-                                  const Text('Komentar',
-                                      style: TextStyle(
-                                          fontSize: 16,
-                                          fontWeight: FontWeight.w700)),
-                                  DropdownButton<String>(
-                                    value: _commentSort,
-                                    items: const [
-                                      DropdownMenuItem(
-                                          value: 'newest',
-                                          child: Text('Terbaru')),
-                                      DropdownMenuItem(
-                                          value: 'oldest',
-                                          child: Text('Terlama')),
-                                    ],
-                                    onChanged: (v) {
-                                      setState(
-                                          () => _commentSort = v ?? 'newest');
-                                      _loadComments();
-                                    },
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 8),
-                              // Add comment input
-                              TextField(
-                                controller: _commentCtl,
-                                maxLines: 3,
-                                decoration: const InputDecoration(
-                                    hintText: 'Tulis komentar...'),
-                              ),
-                              const SizedBox(height: 8),
-                              Row(
-                                children: [
-                                  // star rating simple
-                                  Row(
-                                      children: List.generate(5, (i) {
-                                    final val = i + 1;
-                                    return IconButton(
-                                      icon: Icon(
-                                          val <= (_commentRating ?? 0)
-                                              ? Icons.star
-                                              : Icons.star_border,
-                                          color: Colors.amber),
-                                      onPressed: () =>
-                                          setState(() => _commentRating = val),
-                                    );
-                                  })),
-                                  const Spacer(),
-                                  FilledButton(
-                                      onPressed: _submitComment,
-                                      child: const Text('Kirim'))
-                                ],
-                              ),
-                              const Divider(),
-                              // Comments list
-                              if (_loadingComments)
-                                const Center(child: CircularProgressIndicator())
-                              else if (_comments.isEmpty)
-                                const Text(
-                                    'Belum ada komentar. Jadilah yang pertama!')
-                              else
-                                Column(
-                                  children: _comments.map((c) {
-                                    // prefer commenter_profile from server: display_name + is_admin
-                                    final cp = (c['commenter_profile'] is Map)
-                                        ? Map<String, dynamic>.from(
-                                            c['commenter_profile'])
-                                        : <String, dynamic>{};
-                                    final commenterName =
-                                        (cp['name'] as String?) ??
-                                            (c['commenter_name'] as String?) ??
-                                            'Anonim';
-                                    final displayName =
-                                        (cp['display_name'] as String?) ??
-                                            commenterName;
-                                    final isAdmin = (cp['is_admin'] == true);
-                                    final edited = (c['edited'] == true);
-                                    final uid = cp['id'] ?? c['users_id'];
-                                    final date = _fmtDate(
-                                        c['tanggal']?.toString() ?? '');
-                                    final content =
-                                        c['isi_komentar']?.toString() ?? '';
-                                    final rating = c['rating'];
-                                    final isOwner = _currentUserId != null &&
-                                        (c['users_id'] != null) &&
-                                        (_currentUserId ==
-                                            (c['users_id'] is int
-                                                ? c['users_id']
-                                                : int.tryParse(
-                                                    '${c['users_id']}')));
-                                    // avatar inisial dari nama
-                                    String initials(String s) {
-                                      final parts = s.trim().split(' ');
-                                      if (parts.length >= 2)
-                                        return '${parts[0][0]}${parts[1][0]}'
-                                            .toUpperCase();
-                                      return s.isNotEmpty
-                                          ? s[0].toUpperCase()
-                                          : '?';
-                                    }
+                                  children: List.generate(5, (i) {
+                                final val = i + 1;
+                                return IconButton(
+                                  icon: Icon(
+                                      val <= (_commentRating ?? 0)
+                                          ? Icons.star
+                                          : Icons.star_border,
+                                      color: Colors.amber),
+                                  onPressed: () =>
+                                      setState(() => _commentRating = val),
+                                );
+                              })),
+                              const Spacer(),
+                              FilledButton(
+                                  onPressed: _submitComment,
+                                  child: const Text('Kirim'))
+                            ],
+                          ),
+                          const Divider(),
+                          // Comments list
+                          if (_loadingComments)
+                            const Center(child: CircularProgressIndicator())
+                          else if (_comments.isEmpty)
+                            const Text(
+                                'Belum ada komentar. Jadilah yang pertama!')
+                          else
+                            Column(
+                              children: _comments.map((c) {
+                                // prefer commenter_profile from server: display_name + is_admin
+                                final cp = (c['commenter_profile'] is Map)
+                                    ? Map<String, dynamic>.from(
+                                        c['commenter_profile'])
+                                    : <String, dynamic>{};
+                                final commenterName =
+                                    (cp['name'] as String?) ??
+                                        (c['commenter_name'] as String?) ??
+                                        'Anonim';
+                                final displayName =
+                                    (cp['display_name'] as String?) ??
+                                        commenterName;
+                                final isAdmin = (cp['is_admin'] == true);
+                                final edited = (c['edited'] == true);
+                                final uid = cp['id'] ?? c['users_id'];
+                                final date = _fmtDate(
+                                    c['tanggal']?.toString() ?? '');
+                                final content =
+                                    c['isi_komentar']?.toString() ?? '';
+                                final rating = c['rating'];
+                                final isOwner = _currentUserId != null &&
+                                    (c['users_id'] != null) &&
+                                    (_currentUserId ==
+                                        (c['users_id'] is int
+                                            ? c['users_id']
+                                            : int.tryParse(
+                                                '${c['users_id']}')));
+                                // avatar inisial dari nama
+                                String initials(String s) {
+                                  final parts = s.trim().split(' ');
+                                  if (parts.length >= 2)
+                                    return '${parts[0][0]}${parts[1][0]}'
+                                        .toUpperCase();
+                                  return s.isNotEmpty
+                                      ? s[0].toUpperCase()
+                                      : '?';
+                                }
 
-                                    // Like & Reply controls
-                                    return Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        ListTile(
-                                          leading: CircleAvatar(
-                                            backgroundColor: Colors.grey.shade200,
-                                            child: Text(initials(commenterName),
-                                                style: TextStyle(color: Colors.black87)),
-                                          ),
-                                          title: Row(
-                                            children: [
-                                              Expanded(child: Text(displayName, style: const TextStyle(fontWeight: FontWeight.w600))),
-                                              if (edited)
-                                                Padding(
-                                                  padding: const EdgeInsets.only(left: 8.0),
-                                                  child: Text('(diedit)', style: TextStyle(fontSize: 12, color: Colors.grey.shade600)),
-                                                ),
-                                            ],
-                                          ),
-                                          subtitle: Column(
-                                            crossAxisAlignment: CrossAxisAlignment.start,
-                                            children: [
-                                              if (rating != null)
-                                                Row(children: List.generate(5, (i) => Icon(i < (rating as int) ? Icons.star : Icons.star_border, size: 16, color: Colors.amber))),
-                                              const SizedBox(height: 4),
-                                              Text(content),
-                                              const SizedBox(height: 6),
-                                              Text(date, style: TextStyle(fontSize: 12, color: Colors.grey.shade600)),
-                                            ],
-                                          ),
-                                          trailing: isOwner ? PopupMenuButton<String>(
-                                            onSelected: (v) {
-                                              if (v == 'edit') _editComment(c);
-                                              if (v == 'delete') _deleteComment(c);
-                                            },
-                                            itemBuilder: (_) => const [
-                                              PopupMenuItem(value: 'edit', child: Text('Edit')),
-                                              PopupMenuItem(value: 'delete', child: Text('Hapus')),
-                                            ],
-                                          ) : null,
-                                        ),
-                                        // actions row: like + reply
+                                return ListTile(
+                                  leading: CircleAvatar(
+                                    backgroundColor: Colors.grey.shade200,
+                                    child: Text(initials(commenterName),
+                                        style: TextStyle(
+                                            color: Colors.black87)),
+                                  ),
+                                  title: Row(
+                                    children: [
+                                      Expanded(
+                                          child: Text(displayName,
+                                              style: const TextStyle(
+                                                  fontWeight:
+                                                      FontWeight.w600))),
+                                      if (edited)
                                         Padding(
-                                          padding: const EdgeInsets.only(left: 72.0, right: 12.0, bottom: 8.0),
-                                          child: Row(
-                                            children: [
-                                              IconButton(
-                                                icon: Icon(
-                                                  (c['liked_by_user'] == true) ? Icons.thumb_up : Icons.thumb_up_outlined,
-                                                  size: 20,
-                                                  color: (c['liked_by_user'] == true) ? Colors.blue : Colors.grey,
-                                                ),
-                                                onPressed: () async {
-                                                  try {
-                                                    final res = await api.toggleLikeComment(komentarId: (c['komentar_id'] ?? c['id']));
-                                                    setState(() {
-                                                      c['liked_by_user'] = res['liked'] == true;
-                                                      c['likes_count'] = res['likes_count'] ?? (c['likes_count'] ?? 0);
-                                                    });
-                                                  } catch (e) {
-                                                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Gagal like: $e')));
-                                                  }
-                                                },
-                                              ),
-                                              Text('${c['likes_count'] ?? 0}'),
-                                              const SizedBox(width: 18),
-                                              TextButton(
-                                                onPressed: () async {
-                                                  final ctl = TextEditingController();
-                                                  final ok = await showDialog<bool>(
-                                                    context: context,
-                                                    builder: (ctx) => AlertDialog(
-                                                      title: const Text('Balas Komentar'),
-                                                      content: TextField(controller: ctl, maxLines: 4, decoration: const InputDecoration(hintText: 'Tulis balasan...')),
-                                                      actions: [
-                                                        TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Batal')),
-                                                        FilledButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Kirim')),
-                                                      ],
-                                                    ),
-                                                  );
-                                                  if (ok == true && ctl.text.trim().isNotEmpty) {
-                                                    try {
-                                                      final rep = await api.replyComment(komentarId: (c['komentar_id'] ?? c['id']), isi: ctl.text.trim());
-                                                      setState(() {
-                                                        c['replies'] = [rep, ...(List.from(c['replies'] ?? []))];
-                                                      });
-                                                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Balasan terkirim')));
-                                                    } catch (e) {
-                                                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Gagal balas: $e')));
-                                                    }
-                                                  }
-                                                },
-                                                child: const Text('Balas', style: TextStyle(fontSize: 13)),
-                                              ),
-                                            ],
-                                          ),
+                                          padding: const EdgeInsets.only(
+                                              left: 8.0),
+                                          child: Text('(diedit)',
+                                              style: TextStyle(
+                                                  fontSize: 12,
+                                                  color: Colors
+                                                      .grey.shade600)),
                                         ),
-                                        // replies list (indented)
-                                        if (c['replies'] is List && (c['replies'] as List).isNotEmpty)
-                                          Padding(
-                                            padding: const EdgeInsets.only(left: 72.0, right: 12.0, bottom: 12.0),
-                                            child: Column(
-                                              crossAxisAlignment: CrossAxisAlignment.start,
-                                              children: (c['replies'] as List).map<Widget>((rp) {
-                                                final rm = (rp is Map) ? Map<String, dynamic>.from(rp) : Map<String, dynamic>{};
-                                                final rName = (rm['commenter_profile'] is Map) ? (rm['commenter_profile']['display_name'] ?? rm['commenter_profile']['name'] ?? '') : (rm['reply_name'] ?? '');
-                                                final rText = rm['isi_reply'] ?? rm['isi_komentar'] ?? '';
-                                                final rDate = _fmtDate((rm['tanggal'] ?? '').toString());
-                                                return Padding(
-                                                  padding: const EdgeInsets.only(bottom: 8.0),
-                                                  child: Row(
-                                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                                    children: [
-                                                      CircleAvatar(radius: 12, backgroundColor: Colors.grey.shade200, child: Text((rName as String).isNotEmpty ? rName[0].toUpperCase() : '?', style: const TextStyle(fontSize: 12, color: Colors.black87))),
-                                                      const SizedBox(width: 8),
-                                                      Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(rName, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)), const SizedBox(height: 4), Text(rText.toString()), const SizedBox(height: 4), Text(rDate, style: TextStyle(fontSize: 11, color: Colors.grey.shade600))])),
-                                                    ],
-                                                  ),
-                                                );
-                                              }).toList(),
-                                            ),
-                                          ),
-                                      ],
-                                    );
-                                 }).toList(),
-                               ),
-                    ],
+                                    ],
+                                  ),
+                                  subtitle: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      if (rating != null)
+                                        Row(
+                                            children: List.generate(
+                                                5,
+                                                (i) => Icon(
+                                                    i < (rating as int)
+                                                        ? Icons.star
+                                                        : Icons.star_border,
+                                                    size: 16,
+                                                    color: Colors.amber))),
+                                      const SizedBox(height: 4),
+                                      Text(content),
+                                      const SizedBox(height: 6),
+                                      Text(date,
+                                          style: TextStyle(
+                                              fontSize: 12,
+                                              color: Colors.grey.shade600)),
+                                    ],
+                                  ),
+                                  trailing: isOwner
+                                      ? PopupMenuButton<String>(
+                                          onSelected: (v) {
+                                            if (v == 'edit')
+                                              _editComment(c);
+                                            if (v == 'delete')
+                                              _deleteComment(c);
+                                          },
+                                          itemBuilder: (_) => const [
+                                            PopupMenuItem(
+                                                value: 'edit',
+                                                child: Text('Edit')),
+                                            PopupMenuItem(
+                                                value: 'delete',
+                                                child: Text('Hapus')),
+                                          ],
+                                        )
+                                      : null,
+                                );
+                              }).toList(),
+                            ),
+                        ],
+                      ),
+                    ),
                   ),
-                ),
+                  const SizedBox(height: 20),
+                ],
+              ),
+            ),
     );
   }
 }

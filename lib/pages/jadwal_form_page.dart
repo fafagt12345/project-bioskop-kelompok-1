@@ -220,14 +220,14 @@ class _JadwalFormPageState extends State<JadwalFormPage> {
 
   @override
   Widget build(BuildContext context) {
-    final primary = AppTheme.light.colorScheme.primary;
+    final primary = Theme.of(context).colorScheme.primary;
     final isEdit = widget.jadwalId != null;
 
     return Scaffold(
-      appBar: AppBar(
-        title:
-            Text('${isEdit ? "Edit" : "Tambah"} Jadwal • ${widget.filmTitle}'),
-        backgroundColor: primary,
+      backgroundColor: Theme.of(context).colorScheme.background,
+      appBar: AppTheme.buildGradientAppBar(
+        context,
+        '${isEdit ? "Edit" : "Tambah"} Jadwal • ${widget.filmTitle}',
       ),
       body: Form(
         key: _form,
@@ -299,13 +299,11 @@ class _JadwalFormPageState extends State<JadwalFormPage> {
             const SizedBox(height: 20),
 
             FilledButton.icon(
-              style: ButtonStyle(
-                  backgroundColor: MaterialStateProperty.all(primary)),
               onPressed: _loading ? null : _save,
               icon: const Icon(Icons.save),
-              label: Text(_loading
-                  ? 'Menyimpan...'
-                  : (isEdit ? 'Simpan Perubahan' : 'Simpan')),
+              label: Text(
+                _loading ? 'Menyimpan...' : (isEdit ? 'Simpan Perubahan' : 'Simpan'),
+              ),
             ),
           ],
         ),

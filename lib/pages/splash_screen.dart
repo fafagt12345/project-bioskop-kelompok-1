@@ -5,6 +5,7 @@ import 'admin/admin_home_page.dart';
 import 'customer/customer_home_page.dart';
 import '../theme/app_theme.dart';
 import '../api_service.dart';
+import '../theme/bubble_container.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key}); // <-- tambahkan const constructor
@@ -46,27 +47,24 @@ class _SplashScreenState extends State<SplashScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final primary = AppTheme.light.colorScheme.primary;
+    final cs = Theme.of(context).colorScheme;
     return Scaffold(
-      body: Container(
-        color: primary, // gunakan warna utama AppTheme
-        alignment: Alignment.center,
+      backgroundColor: cs.background,
+      body: Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            // Pastikan path asset benar dan sudah didaftarkan di pubspec.yaml
             Image.asset('assets/logo.png', width: 160, height: 160),
             const SizedBox(height: 16),
-            const Text(
-              'BioskopKu',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 28,
-                fontWeight: FontWeight.bold,
-                letterSpacing: .5,
+            BubbleContainer(
+              gradient: true,
+              padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 18),
+              child: const Text(
+                'BioskopKu',
+                style: TextStyle(fontSize: 30, fontWeight: FontWeight.bold),
               ),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 26),
             const SizedBox(
               width: 36,
               height: 36,

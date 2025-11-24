@@ -5,6 +5,7 @@ import 'registration_page.dart';
 import '../theme/app_theme.dart';
 import 'admin/admin_home_page.dart';
 import 'customer/customer_home_page.dart';
+import '../theme/bubble_container.dart' as bc;
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -53,115 +54,119 @@ class _LoginPageState extends State<LoginPage> {
 
   @override
   Widget build(BuildContext context) {
-    final primary = AppTheme.light.colorScheme.primary;
+    final cs = Theme.of(context).colorScheme;
     return Scaffold(
-      // body with gradient background (not white)
-      body: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [primary.withOpacity(0.12), const Color(0xFFEFF6FF)],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
+      backgroundColor: cs.background,
+      body: Stack(
+        children: [
+          Positioned(
+            top: -60,
+            left: -40,
+            child: CircleAvatar(radius: 110, backgroundColor: cs.primary.withOpacity(.10)),
           ),
-        ),
-        child: SafeArea(
-          child: Center(
+          Positioned(
+            bottom: -50,
+            right: -30,
+            child: CircleAvatar(radius: 90, backgroundColor: cs.primaryContainer.withOpacity(.18)),
+          ),
+          Center(
             child: SingleChildScrollView(
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 30),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  // Header welcome
-                  Column(
-                    children: [
-                      // small logo circle
-                      CircleAvatar(
-                        radius: 36,
-                        backgroundColor: primary,
-                        child: const Icon(Icons.movie,
-                            color: Colors.white, size: 36),
-                      ),
-                      const SizedBox(height: 14),
-                      Text('Selamat datang di BioskopKu',
-                          style: TextStyle(
-                              fontSize: 22,
-                              fontWeight: FontWeight.w700,
-                              color: primary)),
-                      const SizedBox(height: 6),
-                      Text('Silahkan login dahulu.',
-                          style: TextStyle(color: Colors.grey.shade700)),
-                    ],
-                  ),
-                  const SizedBox(height: 20),
-
-                  // Bubble container form
                   Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(18),
                     decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(20),
-                      boxShadow: [
-                        BoxShadow(
-                          color: primary.withOpacity(0.08),
-                          blurRadius: 18,
-                          offset: const Offset(0, 8),
-                        )
-                      ],
+                      borderRadius: BorderRadius.circular(24),
+                      gradient: LinearGradient(
+                        colors: [
+                          cs.primary.withOpacity(.20),
+                          cs.primary.withOpacity(.05),
+                        ],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
                     ),
+                    padding: const EdgeInsets.all(26),
                     child: Column(
                       children: [
-                        TextField(
-                          controller: _username,
-                          decoration: const InputDecoration(
-                            hintText: 'Username',
-                            prefixIcon: Icon(Icons.person),
-                          ),
-                          textInputAction: TextInputAction.next,
-                        ),
-                        const SizedBox(height: 12),
-                        TextField(
-                          controller: _password,
-                          decoration: InputDecoration(
-                            hintText: 'Password',
-                            prefixIcon: const Icon(Icons.lock),
-                            suffixIcon: IconButton(
-                              icon: Icon(_obscurePassword
-                                  ? Icons.visibility_off
-                                  : Icons.visibility),
-                              onPressed: () => setState(
-                                  () => _obscurePassword = !_obscurePassword),
+                        // Header welcome
+                        Column(
+                          children: [
+                            // small logo circle
+                            CircleAvatar(
+                              radius: 36,
+                              backgroundColor: cs.primary,
+                              child: const Icon(Icons.movie,
+                                  color: Colors.white, size: 36),
                             ),
-                          ),
-                          obscureText: _obscurePassword,
-                        ),
-                        const SizedBox(height: 18),
-                        SizedBox(
-                          width: double.infinity,
-                          child: FilledButton(
-                            style: ButtonStyle(
-                              backgroundColor:
-                                  MaterialStateProperty.all(primary),
-                              shape: MaterialStateProperty.all(
-                                  RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(30))),
-                            ),
-                            onPressed: _loading ? null : _login,
-                            child: Padding(
-                              padding: const EdgeInsets.symmetric(vertical: 12),
-                              child: Text(_loading ? 'Masuk...' : 'Masuk'),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        TextButton(
-                          onPressed: () => Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                  builder: (_) => const RegistrationPage())),
-                          child: const Text('Lupa password?'),
+                            const SizedBox(height: 14),
+                            Text('Selamat datang di BioskopKu',
+                                style: TextStyle(
+                                    fontSize: 22,
+                                    fontWeight: FontWeight.w700,
+                                    color: cs.primary)),
+                            const SizedBox(height: 6),
+                            Text('Silahkan login dahulu.',
+                                style: TextStyle(color: Colors.grey.shade700)),
+                          ],
                         ),
                       ],
+                    ),
+                  ),
+                  const SizedBox(height: 22),
+                  Card(
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+                    elevation: 4,
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(20, 18, 20, 24),
+                      child: Column(
+                        children: [
+                          TextField(
+                            controller: _username,
+                            decoration: const InputDecoration(
+                              hintText: 'Username',
+                              prefixIcon: Icon(Icons.person),
+                            ),
+                            textInputAction: TextInputAction.next,
+                          ),
+                          const SizedBox(height: 12),
+                          TextField(
+                            controller: _password,
+                            decoration: InputDecoration(
+                              hintText: 'Password',
+                              prefixIcon: const Icon(Icons.lock),
+                              suffixIcon: IconButton(
+                                icon: Icon(_obscurePassword
+                                    ? Icons.visibility_off
+                                    : Icons.visibility),
+                                onPressed: () => setState(
+                                    () => _obscurePassword = !_obscurePassword),
+                              ),
+                            ),
+                            obscureText: _obscurePassword,
+                          ),
+                          const SizedBox(height: 18),
+                          SizedBox(
+                            width: double.infinity,
+                            child: FilledButton(
+                              onPressed: _loading ? null : _login,
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(vertical: 12),
+                                child: Text(_loading ? 'Masuk...' : 'Masuk'),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          TextButton(
+                            onPressed: () => Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                    builder: (_) => const RegistrationPage())),
+                            child: const Text('Lupa password?'),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
 
@@ -185,7 +190,7 @@ class _LoginPageState extends State<LoginPage> {
               ),
             ),
           ),
-        ),
+        ],
       ),
     );
   }

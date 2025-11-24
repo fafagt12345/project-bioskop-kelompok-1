@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import '../../api_service.dart';
 import '../../theme/app_theme.dart';
+import '../../theme/bubble_container.dart';
 import '../film_list_page.dart';
 import '../login_page.dart';
+import '../settings_page.dart';
 
 class AdminHomePage extends StatefulWidget {
   const AdminHomePage({super.key});
@@ -53,12 +55,12 @@ class _AdminHomePageState extends State<AdminHomePage> {
 
   @override
   Widget build(BuildContext context) {
-    final primary = AppTheme.light.colorScheme.primary;
+    final primary = Theme.of(context).colorScheme.primary;
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Admin Dashboard'),
-        automaticallyImplyLeading: false, // hilangkan tombol kembali
-        backgroundColor: primary,
+      backgroundColor: Theme.of(context).colorScheme.background,
+      appBar: AppTheme.buildGradientAppBar(
+        context,
+        'Admin Dashboard',
         actions: [
           IconButton(
             onPressed: _signingOut ? null : _confirmAndLogout,
@@ -73,9 +75,12 @@ class _AdminHomePageState extends State<AdminHomePage> {
         ],
       ),
       body: ListView(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(18),
         children: [
           Card(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            elevation: 3,
+            margin: EdgeInsets.zero,
             child: ListTile(
               leading: Icon(Icons.movie_creation_outlined, color: primary),
               title: const Text('Kelola Film'),
@@ -83,6 +88,21 @@ class _AdminHomePageState extends State<AdminHomePage> {
               onTap: () => Navigator.push(
                 context,
                 MaterialPageRoute(builder: (_) => const FilmListPage()),
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+          Card(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            elevation: 3,
+            margin: EdgeInsets.zero,
+            child: ListTile(
+              leading: Icon(Icons.settings, color: primary),
+              title: const Text('Pengaturan'),
+              subtitle: const Text('Profil, tema, preferensi'),
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const SettingsPage()),
               ),
             ),
           ),

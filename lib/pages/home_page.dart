@@ -3,6 +3,7 @@ import 'film_list_page.dart';
 import '../theme/app_theme.dart';
 import '../api_service.dart';
 import 'login_page.dart';
+import 'settings_page.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -72,11 +73,12 @@ class _HomePageState extends State<HomePage> {
 
   @override
   Widget build(BuildContext context) {
-    final primary = AppTheme.light.colorScheme.primary;
+    final primary = Theme.of(context).colorScheme.primary;
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Bioskop • Home'),
-        backgroundColor: primary,
+      backgroundColor: Theme.of(context).colorScheme.background,
+      appBar: AppTheme.buildGradientAppBar(
+        context,
+        'Bioskop • Home',
         actions: [
           IconButton(
             icon: _loggingOut
@@ -104,6 +106,16 @@ class _HomePageState extends State<HomePage> {
                 MaterialPageRoute(builder: (_) => const FilmListPage()),
               ),
             ),
+            const SizedBox(height: 16),
+            _HomeTile(
+              icon: Icons.settings,
+              title: 'Pengaturan',
+              subtitle: 'Profil, tema, dan lainnya',
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const SettingsPage()),
+              ),
+            ),
           ],
         ),
       ),
@@ -125,37 +137,40 @@ class _HomeTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final primary = AppTheme.light.colorScheme.primary;
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(16),
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: primary.withOpacity(0.7)),
-          color: primary.withOpacity(0.03),
-        ),
-        child: Row(
-          children: [
-            Icon(icon, size: 36, color: primary),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(title,
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                      )),
-                  const SizedBox(height: 4),
-                  Text(subtitle, style: TextStyle(color: Colors.grey.shade600)),
-                ],
+    final cs = Theme.of(context).colorScheme;
+    return Card(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
+      elevation: 3,
+      margin: const EdgeInsets.symmetric(vertical: 2),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(22),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.all(18),
+          child: Row(
+            children: [
+              CircleAvatar(
+                backgroundColor: cs.primary.withOpacity(.12),
+                child: Icon(icon, color: cs.primary),
               ),
-            ),
-            const Icon(Icons.chevron_right),
-          ],
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(title,
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                        )),
+                    const SizedBox(height: 4),
+                    Text(subtitle, style: TextStyle(color: Colors.grey.shade600)),
+                  ],
+                ),
+              ),
+              const Icon(Icons.chevron_right),
+            ],
+          ),
         ),
       ),
     );

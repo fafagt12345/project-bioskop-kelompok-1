@@ -650,31 +650,6 @@ class ApiService {
     }
   }
 
-  // ----- reply a comment -----
-  Future<Map<String, dynamic>> replyComment({
-    required int komentarId,
-    required String isi,
-  }) async {
-    try {
-      final res = await _dio.post('/komentar/$komentarId/reply', data: {
-        'isi_reply': isi,
-      });
-      return _toMap(res.data);
-    } on DioException catch (e) {
-      throw _wrap(e);
-    }
-  }
-
-  // ----- toggle like -----
-  Future<Map<String, dynamic>> toggleLikeComment({required int komentarId}) async {
-    try {
-      final res = await _dio.post('/komentar/$komentarId/like');
-      return _toMap(res.data);
-    } on DioException catch (e) {
-      throw _wrap(e);
-    }
-  }
-
   // ===== Utils =====
   ApiException _wrap(DioException e) {
     final status = e.response?.statusCode;

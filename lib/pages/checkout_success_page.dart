@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../theme/app_theme.dart';
+import '../theme/bubble_container.dart';
 
 class CheckoutSuccessPage extends StatelessWidget {
   final Map<String, dynamic> data;
@@ -47,34 +48,39 @@ class CheckoutSuccessPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final primary = AppTheme.light.colorScheme.primary;
+    final primary = Theme.of(context).colorScheme.primary;
     final trxId = data['transaksi_id'] ?? data['id'] ?? '-';
     final total = data['total_harga'] ?? 0;
     final kursiTeks = _seatLabels(data);
 
     return Scaffold(
-      appBar: AppBar(
-          title: const Text('Berhasil Checkout'), backgroundColor: primary),
+      backgroundColor: Theme.of(context).colorScheme.background,
+      appBar: AppTheme.buildGradientAppBar(context, 'Berhasil Checkout'),
       body: Padding(
         padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Transaksi ID: $trxId',
-                style:
+        child: Card(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          elevation: 4,
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('Transaksi ID: $trxId',
+                  style:
                     const TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
-            const SizedBox(height: 8),
-            Text('Total Bayar: Rp ${_formatRp(total)}'),
-            const SizedBox(height: 8),
-            Text('Kursi: $kursiTeks'),
-            const Spacer(),
-            FilledButton(
-              style: ButtonStyle(
-                  backgroundColor: MaterialStateProperty.all(primary)),
-              onPressed: () => Navigator.popUntil(context, (r) => r.isFirst),
-              child: const Text('Kembali ke awal'),
+                const SizedBox(height: 8),
+                Text('Total Bayar: Rp ${_formatRp(total)}'),
+                const SizedBox(height: 8),
+                Text('Kursi: $kursiTeks'),
+                const Spacer(),
+                FilledButton(
+                  onPressed: () => Navigator.popUntil(context, (r) => r.isFirst),
+                  child: const Text('Kembali ke awal'),
+                ),
+              ],
             ),
-          ],
+          ),
         ),
       ),
     );

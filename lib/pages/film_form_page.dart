@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../api_service.dart';
 import '../theme/app_theme.dart';
+import '../theme/bubble_container.dart';
 
 class FilmFormPage extends StatefulWidget {
   final int? filmId; // null = create, non-null = update
@@ -119,11 +120,12 @@ class _FilmFormPageState extends State<FilmFormPage> {
 
   @override
   Widget build(BuildContext context) {
-    final primary = AppTheme.light.colorScheme.primary;
+    final primary = Theme.of(context).colorScheme.primary;
     return Scaffold(
-      appBar: AppBar(
-        title: Text(widget.filmId == null ? 'Tambah Film' : 'Edit Film'),
-        backgroundColor: primary,
+      backgroundColor: Theme.of(context).colorScheme.background,
+      appBar: AppTheme.buildGradientAppBar(
+        context,
+        widget.filmId == null ? 'Tambah Film' : 'Edit Film',
         actions: [
           TextButton(
             onPressed: _saving ? null : _save,
@@ -140,85 +142,90 @@ class _FilmFormPageState extends State<FilmFormPage> {
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            children: [
-              if (_error != null)
-                Container(
-                  width: double.infinity,
-                  margin: const EdgeInsets.only(bottom: 12),
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: Colors.red.shade50,
-                    border: Border.all(color: Colors.red.shade200),
-                    borderRadius: BorderRadius.circular(8),
+        child: Card(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          elevation: 4,
+          child: Padding(
+            padding: const EdgeInsets.all(18),
+            child: Form(
+              key: _formKey,
+              child: Column(
+                children: [
+                  if (_error != null)
+                    Container(
+                      width: double.infinity,
+                      margin: const EdgeInsets.only(bottom: 12),
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.red.shade50,
+                        border: Border.all(color: Colors.red.shade200),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(_error!,
+                          style: TextStyle(color: Colors.red.shade800)),
+                    ),
+                  TextFormField(
+                    controller: _judulC,
+                    decoration: const InputDecoration(
+                      labelText: 'Judul',
+                      border: OutlineInputBorder(),
+                    ),
+                    validator: (v) =>
+                        (v == null || v.trim().isEmpty) ? 'Judul wajib' : null,
                   ),
-                  child: Text(_error!,
-                      style: TextStyle(color: Colors.red.shade800)),
-                ),
-              TextFormField(
-                controller: _judulC,
-                decoration: const InputDecoration(
-                  labelText: 'Judul',
-                  border: OutlineInputBorder(),
-                ),
-                validator: (v) =>
-                    (v == null || v.trim().isEmpty) ? 'Judul wajib' : null,
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    controller: _sinopsisC,
+                    maxLines: 4,
+                    decoration: const InputDecoration(
+                      labelText: 'Sinopsis',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    controller: _durasiC,
+                    keyboardType: TextInputType.number,
+                    decoration: const InputDecoration(
+                      labelText: 'Durasi (menit)',
+                      border: OutlineInputBorder(),
+                    ),
+                    validator: (v) {
+                      final n = int.tryParse(v?.trim() ?? '');
+                      if (n == null || n <= 0) return 'Durasi tidak valid';
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 12),
+                  DropdownButtonFormField<int>(
+                    value: _selectedGenreId,
+                    items: _genres.map((g) {
+                      final id = (g['id'] is int)
+                          ? g['id'] as int
+                          : int.tryParse('${g['id']}');
+                      final name =
+                          (g['nama'] ?? g['name'] ?? g['judul'] ?? 'Tanpa Nama')
+                              .toString();
+                      return DropdownMenuItem<int>(value: id, child: Text(name));
+                    }).toList(),
+                    onChanged: (v) => setState(() => _selectedGenreId = v),
+                    decoration: const InputDecoration(
+                      labelText: 'Genre',
+                      border: OutlineInputBorder(),
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  SizedBox(
+                    width: double.infinity,
+                    child: FilledButton.icon(
+                      onPressed: _saving ? null : _save,
+                      icon: const Icon(Icons.save),
+                      label: Text(_saving ? 'Menyimpan...' : 'Simpan'),
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(height: 12),
-              TextFormField(
-                controller: _sinopsisC,
-                maxLines: 4,
-                decoration: const InputDecoration(
-                  labelText: 'Sinopsis',
-                  border: OutlineInputBorder(),
-                ),
-              ),
-              const SizedBox(height: 12),
-              TextFormField(
-                controller: _durasiC,
-                keyboardType: TextInputType.number,
-                decoration: const InputDecoration(
-                  labelText: 'Durasi (menit)',
-                  border: OutlineInputBorder(),
-                ),
-                validator: (v) {
-                  final n = int.tryParse(v?.trim() ?? '');
-                  if (n == null || n <= 0) return 'Durasi tidak valid';
-                  return null;
-                },
-              ),
-              const SizedBox(height: 12),
-              DropdownButtonFormField<int>(
-                value: _selectedGenreId,
-                items: _genres.map((g) {
-                  final id = (g['id'] is int)
-                      ? g['id'] as int
-                      : int.tryParse('${g['id']}');
-                  final name =
-                      (g['nama'] ?? g['name'] ?? g['judul'] ?? 'Tanpa Nama')
-                          .toString();
-                  return DropdownMenuItem<int>(value: id, child: Text(name));
-                }).toList(),
-                onChanged: (v) => setState(() => _selectedGenreId = v),
-                decoration: const InputDecoration(
-                  labelText: 'Genre',
-                  border: OutlineInputBorder(),
-                ),
-              ),
-              const SizedBox(height: 24),
-              SizedBox(
-                width: double.infinity,
-                child: FilledButton.icon(
-                  style: ButtonStyle(
-                      backgroundColor: MaterialStateProperty.all(primary)),
-                  onPressed: _saving ? null : _save,
-                  icon: const Icon(Icons.save),
-                  label: Text(_saving ? 'Menyimpan...' : 'Simpan'),
-                ),
-              ),
-            ],
+            ),
           ),
         ),
       ),

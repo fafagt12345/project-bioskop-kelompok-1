@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import '../api_service.dart';
 import '../theme/app_theme.dart';
 import 'jadwal_form_page.dart';
-import 'seat_selection_page.dart'; // ✅ tambahkan
+import 'seat_selection_page.dart';
 
 class JadwalListPage extends StatefulWidget {
   final int filmId;
@@ -122,14 +122,33 @@ class _JadwalListPageState extends State<JadwalListPage> {
     }
   }
 
+  void _openSeat(Map<String, dynamic> row) {
+    final jadwalId = (row['jadwal_id'] is num)
+        ? (row['jadwal_id'] as num).toInt()
+        : int.tryParse('${row['jadwal_id']}') ?? 0;
+    final studioId = (row['studio_id'] is num)
+        ? (row['studio_id'] as num).toInt()
+        : int.tryParse('${row['studio_id']}');
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => SeatSelectionPage(
+          jadwalId: jadwalId,
+          filmTitle: widget.filmTitle,
+          studioId: studioId,
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    final primary = AppTheme.light.colorScheme.primary;
-
     return Scaffold(
-      appBar: AppBar(
-        title: Text('Jadwal • ${widget.filmTitle}'),
-        backgroundColor: primary,
+      backgroundColor: Theme.of(context).colorScheme.background,
+      appBar: AppTheme.buildGradientAppBar(
+        context,
+        'Jadwal • ${widget.filmTitle}',
+        actions: _isAdmin ? [] : null,
       ),
       floatingActionButton: _isAdmin
           ? FloatingActionButton.extended(
@@ -147,69 +166,169 @@ class _JadwalListPageState extends State<JadwalListPage> {
                       child: Text('Belum ada jadwal. Tekan tombol “Tambah”.'))
                   : RefreshIndicator(
                       onRefresh: _load,
-                      child: ListView.separated(
+                      child: ListView(
                         padding: const EdgeInsets.all(12),
-                        itemCount: _rows.length,
-                        separatorBuilder: (_, __) => const SizedBox(height: 8),
-                        itemBuilder: (_, i) {
-                          final m = _rows[i];
-                          final id = (m['jadwal_id'] is num)
-                              ? (m['jadwal_id'] as num).toInt()
-                              : int.tryParse('${m['jadwal_id']}') ?? 0;
-                          final tgl = (m['tanggal'] ?? '').toString();
-                          final jm =
-                              _timeHHmm((m['jam_mulai'] ?? '').toString());
-                          final js =
-                              _timeHHmm((m['jam_selesai'] ?? '').toString());
-                          final studio = _studioName(m);
-                          final studioId = (m['studio_id'] is num)
-                              ? (m['studio_id'] as num).toInt()
-                              : int.tryParse('${m['studio_id']}');
-
-                          return Card(
+                        children: [
+                          Card(
                             shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12)),
-                            child: ListTile(
-                              onTap: () {
-                                // ✅ klik item → pilih kursi
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (_) => SeatSelectionPage(
-                                      jadwalId: id,
-                                      filmTitle: widget.filmTitle,
-                                      studioId:
-                                          studioId, // penting buat generate kursi
-                                    ),
-                                  ),
-                                );
-                              },
-                              title: Text('$tgl  •  $jm–$js',
-                                  style: const TextStyle(
-                                      fontWeight: FontWeight.w600)),
-                              subtitle: Text(studio),
-                              trailing: _isAdmin
-                                  ? Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        IconButton(
-                                          tooltip: 'Edit',
-                                          icon: const Icon(Icons.edit),
-                                          onPressed: () => _edit(m),
-                                        ),
-                                        IconButton(
-                                          tooltip: 'Hapus',
-                                          icon: const Icon(Icons.delete_outline),
-                                          onPressed: () => _delete(id),
-                                        ),
-                                      ],
-                                    )
-                                  : null,
+                              borderRadius: BorderRadius.circular(18),
                             ),
-                          );
-                        },
+                            elevation: 3,
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(18),
+                              child: _buildScheduleTable(context),
+                            ),
+                          ),
+                        ],
                       ),
                     )),
+    );
+  }
+
+  Widget _buildScheduleTable(BuildContext context) {
+    final theme = Theme.of(context);
+    final borderColor = theme.dividerColor.withOpacity(.6);
+    final headerStyle = theme.textTheme.labelLarge?.copyWith(
+      fontWeight: FontWeight.w700,
+      color: theme.colorScheme.onSurface,
+    );
+    final bodyStyle = theme.textTheme.bodyMedium;
+
+    final rows = <TableRow>[
+      TableRow(
+        decoration: BoxDecoration(
+          color: theme.colorScheme.surfaceVariant.withOpacity(.35),
+        ),
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(12),
+            child: Text('Jadwal', style: headerStyle),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(12),
+            child: Text('Tanggal', style: headerStyle),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(12),
+            child: Text('Jam', style: headerStyle),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(12),
+            child: Text('Studio', style: headerStyle),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(12),
+            child: Text('Tiket', style: headerStyle, textAlign: TextAlign.center),
+          ),
+        ],
+      ),
+    ];
+
+    for (var i = 0; i < _rows.length; i++) {
+      final row = _rows[i];
+      final jadwalId = (row['jadwal_id'] is num)
+          ? (row['jadwal_id'] as num).toInt()
+          : int.tryParse('${row['jadwal_id']}') ?? 0;
+      final tanggal = (row['tanggal'] ?? '').toString();
+      final jamMulai = _timeHHmm((row['jam_mulai'] ?? '').toString());
+      final jamSelesai = _timeHHmm((row['jam_selesai'] ?? '').toString());
+      final studio = _studioName(row);
+
+      final actionWidgets = <Widget>[
+        TextButton(
+          onPressed: () => _openSeat(row),
+          child: const Text('Lihat Kursi'),
+        ),
+      ];
+      if (_isAdmin) {
+        actionWidgets.addAll([
+          IconButton(
+            tooltip: 'Edit',
+            icon: const Icon(Icons.edit),
+            onPressed: () => _edit(row),
+          ),
+          IconButton(
+            tooltip: 'Hapus',
+            icon: const Icon(Icons.delete_outline),
+            onPressed: () => _delete(jadwalId),
+          ),
+        ]);
+      }
+
+      rows.add(
+        TableRow(
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Jadwal ${i + 1}', style: bodyStyle),
+                  if (_isAdmin)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 6),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          IconButton(
+                            tooltip: 'Edit',
+                            visualDensity: VisualDensity.compact,
+                            icon: const Icon(Icons.edit),
+                            onPressed: () => _edit(row),
+                          ),
+                          const SizedBox(width: 4),
+                          IconButton(
+                            tooltip: 'Hapus',
+                            visualDensity: VisualDensity.compact,
+                            icon: const Icon(Icons.delete_outline),
+                            onPressed: () => _delete(jadwalId),
+                          ),
+                        ],
+                      ),
+                    ),
+                ],
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.all(12),
+              child: Text(tanggal, style: bodyStyle),
+            ),
+            Padding(
+              padding: const EdgeInsets.all(12),
+              child: Text('$jamMulai – $jamSelesai', style: bodyStyle),
+            ),
+            Padding(
+              padding: const EdgeInsets.all(12),
+              child: Text(studio, style: bodyStyle),
+            ),
+            Padding(
+              padding: const EdgeInsets.all(12),
+              child: Center(
+                child: FilledButton(
+                  onPressed: () => _openSeat(row),
+                  child: const Text('Pesan Tiket'),
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return Table(
+      border: TableBorder.all(
+        color: borderColor,
+        width: 1,
+        borderRadius: BorderRadius.circular(18),
+      ),
+      columnWidths: const {
+        0: IntrinsicColumnWidth(),
+        1: FlexColumnWidth(1.1),
+        2: FlexColumnWidth(),
+        3: FlexColumnWidth(),
+        4: IntrinsicColumnWidth(),
+      },
+      children: rows,
     );
   }
 }
