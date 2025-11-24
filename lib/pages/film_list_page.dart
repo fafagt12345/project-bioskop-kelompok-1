@@ -89,16 +89,23 @@ class _FilmListPageState extends State<FilmListPage> {
 
   String? _posterOf(Map<String, dynamic> m) {
     final title = (m['judul'] ?? m['title'] ?? '').toString().toLowerCase();
-    if (title.contains('avangers') || title.contains('avengers') || title.contains('endgame')) {
+    if (title.contains('avangers') ||
+        title.contains('avengers') ||
+        title.contains('endgame')) {
       return 'assets/Avangers_EndGame.png';
     }
     if (title.contains('laskar')) return 'assets/LaskarPelangi.png';
-    if (title.contains('stupid') || title.contains('my stupid boss')) return 'assets/MyStupidBoss.png';
-    if (title.contains('pengabdi') || title.contains('setan')) return 'assets/PengabdiSetan.png';
-    if (title.contains('toy story') || title.contains('toystory') || title.contains('toy')) {
+    if (title.contains('stupid') || title.contains('my stupid boss'))
+      return 'assets/MyStupidBoss.png';
+    if (title.contains('pengabdi') || title.contains('setan'))
+      return 'assets/PengabdiSetan.png';
+    if (title.contains('toy story') ||
+        title.contains('toystory') ||
+        title.contains('toy')) {
       return 'assets/ToyStory_4.png';
     }
-    if (title.contains('jurassic') || title.contains('dinosaurus')) return 'assets/JurassicWorld.png';
+    if (title.contains('jurassic') || title.contains('dinosaurus'))
+      return 'assets/JurassicWorld.png';
     final poster = m['poster']?.toString();
     if (poster == null || poster.isEmpty) return null;
     return poster;
@@ -106,11 +113,13 @@ class _FilmListPageState extends State<FilmListPage> {
 
   Widget _posterTile(Map<String, dynamic> film) {
     final path = _posterOf(film);
-    final isNetwork =
-        path != null && (path.startsWith('http://') || path.startsWith('https://'));
+    final isNetwork = path != null &&
+        (path.startsWith('http://') || path.startsWith('https://'));
     final effective = path == null
         ? null
-        : (isNetwork ? path : (path.startsWith('assets/') ? path : 'assets/$path'));
+        : (isNetwork
+            ? path
+            : (path.startsWith('assets/') ? path : 'assets/$path'));
 
     Widget image;
     if (effective == null) {
@@ -291,7 +300,8 @@ class _FilmListPageState extends State<FilmListPage> {
                       : GridView.builder(
                           padding: const EdgeInsets.fromLTRB(12, 8, 12, 96),
                           itemCount: _items.length,
-                          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                          gridDelegate:
+                              const SliverGridDelegateWithFixedCrossAxisCount(
                             crossAxisCount: 3,
                             crossAxisSpacing: 12,
                             mainAxisSpacing: 12,
@@ -321,14 +331,17 @@ class _FilmListPageState extends State<FilmListPage> {
                                 child: Padding(
                                   padding: const EdgeInsets.all(10),
                                   child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     children: [
                                       _posterTile(film),
                                       const SizedBox(height: 8),
                                       Expanded(
                                         child: Column(
-                                          crossAxisAlignment: CrossAxisAlignment.start,
-                                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.spaceBetween,
                                           children: [
                                             Text(
                                               _titleOf(film),
@@ -337,7 +350,9 @@ class _FilmListPageState extends State<FilmListPage> {
                                               style: Theme.of(context)
                                                   .textTheme
                                                   .titleSmall
-                                                  ?.copyWith(fontWeight: FontWeight.w700),
+                                                  ?.copyWith(
+                                                      fontWeight:
+                                                          FontWeight.w700),
                                             ),
                                             const SizedBox(height: 4),
                                             Text(

@@ -363,8 +363,7 @@ class _FilmDetailPageState extends State<FilmDetailPage> {
                       children: [
                         Text(title,
                             style: const TextStyle(
-                                fontSize: 20,
-                                fontWeight: FontWeight.w700)),
+                                fontSize: 20, fontWeight: FontWeight.w700)),
                         const SizedBox(height: 8),
                         Wrap(
                           spacing: 8,
@@ -377,8 +376,7 @@ class _FilmDetailPageState extends State<FilmDetailPage> {
                         ),
                         const SizedBox(height: 16),
                         const Text('Sinopsis',
-                            style:
-                                TextStyle(fontWeight: FontWeight.w600)),
+                            style: TextStyle(fontWeight: FontWeight.w600)),
                         const SizedBox(height: 8),
                         Text(sinopsis.isEmpty ? '-' : sinopsis),
                       ],
@@ -386,7 +384,8 @@ class _FilmDetailPageState extends State<FilmDetailPage> {
                   ),
                   const SizedBox(height: 14),
                   Card(
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(20)),
                     elevation: 4,
                     child: Padding(
                       padding: const EdgeInsets.all(16),
@@ -394,8 +393,7 @@ class _FilmDetailPageState extends State<FilmDetailPage> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Row(
-                            mainAxisAlignment:
-                                MainAxisAlignment.spaceBetween,
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
                               const Text('Komentar',
                                   style: TextStyle(
@@ -405,15 +403,12 @@ class _FilmDetailPageState extends State<FilmDetailPage> {
                                 value: _commentSort,
                                 items: const [
                                   DropdownMenuItem(
-                                      value: 'newest',
-                                      child: Text('Terbaru')),
+                                      value: 'newest', child: Text('Terbaru')),
                                   DropdownMenuItem(
-                                      value: 'oldest',
-                                      child: Text('Terlama')),
+                                      value: 'oldest', child: Text('Terlama')),
                                 ],
                                 onChanged: (v) {
-                                  setState(
-                                      () => _commentSort = v ?? 'newest');
+                                  setState(() => _commentSort = v ?? 'newest');
                                   _loadComments();
                                 },
                               ),
@@ -465,18 +460,17 @@ class _FilmDetailPageState extends State<FilmDetailPage> {
                                     ? Map<String, dynamic>.from(
                                         c['commenter_profile'])
                                     : <String, dynamic>{};
-                                final commenterName =
-                                    (cp['name'] as String?) ??
-                                        (c['commenter_name'] as String?) ??
-                                        'Anonim';
+                                final commenterName = (cp['name'] as String?) ??
+                                    (c['commenter_name'] as String?) ??
+                                    'Anonim';
                                 final displayName =
                                     (cp['display_name'] as String?) ??
                                         commenterName;
                                 final isAdmin = (cp['is_admin'] == true);
                                 final edited = (c['edited'] == true);
                                 final uid = cp['id'] ?? c['users_id'];
-                                final date = _fmtDate(
-                                    c['tanggal']?.toString() ?? '');
+                                final date =
+                                    _fmtDate(c['tanggal']?.toString() ?? '');
                                 final content =
                                     c['isi_komentar']?.toString() ?? '';
                                 final rating = c['rating'];
@@ -502,8 +496,8 @@ class _FilmDetailPageState extends State<FilmDetailPage> {
                                   leading: CircleAvatar(
                                     backgroundColor: Colors.grey.shade200,
                                     child: Text(initials(commenterName),
-                                        style: TextStyle(
-                                            color: Colors.black87)),
+                                        style:
+                                            TextStyle(color: Colors.black87)),
                                   ),
                                   title: Row(
                                     children: [
@@ -514,13 +508,12 @@ class _FilmDetailPageState extends State<FilmDetailPage> {
                                                       FontWeight.w600))),
                                       if (edited)
                                         Padding(
-                                          padding: const EdgeInsets.only(
-                                              left: 8.0),
+                                          padding:
+                                              const EdgeInsets.only(left: 8.0),
                                           child: Text('(diedit)',
                                               style: TextStyle(
                                                   fontSize: 12,
-                                                  color: Colors
-                                                      .grey.shade600)),
+                                                  color: Colors.grey.shade600)),
                                         ),
                                     ],
                                   ),
@@ -550,8 +543,7 @@ class _FilmDetailPageState extends State<FilmDetailPage> {
                                   trailing: isOwner
                                       ? PopupMenuButton<String>(
                                           onSelected: (v) {
-                                            if (v == 'edit')
-                                              _editComment(c);
+                                            if (v == 'edit') _editComment(c);
                                             if (v == 'delete')
                                               _deleteComment(c);
                                           },

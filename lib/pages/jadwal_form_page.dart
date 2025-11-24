@@ -302,7 +302,9 @@ class _JadwalFormPageState extends State<JadwalFormPage> {
               onPressed: _loading ? null : _save,
               icon: const Icon(Icons.save),
               label: Text(
-                _loading ? 'Menyimpan...' : (isEdit ? 'Simpan Perubahan' : 'Simpan'),
+                _loading
+                    ? 'Menyimpan...'
+                    : (isEdit ? 'Simpan Perubahan' : 'Simpan'),
               ),
             ),
           ],

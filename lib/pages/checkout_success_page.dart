@@ -59,7 +59,8 @@ class CheckoutSuccessPage extends StatelessWidget {
       body: Padding(
         padding: const EdgeInsets.all(16),
         child: Card(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
           elevation: 4,
           child: Padding(
             padding: const EdgeInsets.all(20),
@@ -67,15 +68,16 @@ class CheckoutSuccessPage extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text('Transaksi ID: $trxId',
-                  style:
-                    const TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+                    style: const TextStyle(
+                        fontSize: 16, fontWeight: FontWeight.w600)),
                 const SizedBox(height: 8),
                 Text('Total Bayar: Rp ${_formatRp(total)}'),
                 const SizedBox(height: 8),
                 Text('Kursi: $kursiTeks'),
                 const Spacer(),
                 FilledButton(
-                  onPressed: () => Navigator.popUntil(context, (r) => r.isFirst),
+                  onPressed: () =>
+                      Navigator.popUntil(context, (r) => r.isFirst),
                   child: const Text('Kembali ke awal'),
                 ),
               ],

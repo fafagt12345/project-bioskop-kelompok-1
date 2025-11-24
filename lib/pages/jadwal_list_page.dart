@@ -218,7 +218,8 @@ class _JadwalListPageState extends State<JadwalListPage> {
           ),
           Padding(
             padding: const EdgeInsets.all(12),
-            child: Text('Tiket', style: headerStyle, textAlign: TextAlign.center),
+            child:
+                Text('Tiket', style: headerStyle, textAlign: TextAlign.center),
           ),
         ],
       ),

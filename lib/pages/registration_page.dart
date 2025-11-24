@@ -90,7 +90,8 @@ class _RegistrationPageState extends State<RegistrationPage> {
         padding: const EdgeInsets.fromLTRB(18, 60, 18, 30),
         children: [
           Card(
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
             elevation: 4,
             child: Padding(
               padding: const EdgeInsets.all(20),
@@ -144,8 +145,7 @@ class _RegistrationPageState extends State<RegistrationPage> {
                   const SizedBox(height: 20),
                   FilledButton(
                     style: ButtonStyle(
-                        backgroundColor:
-                            MaterialStateProperty.all(cs.primary)),
+                        backgroundColor: MaterialStateProperty.all(cs.primary)),
                     onPressed: _loading ? null : _register,
                     child: Text(_loading ? 'Mendaftar...' : 'Daftar'),
                   ),

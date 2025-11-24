@@ -5,9 +5,9 @@ import 'package:google_fonts/google_fonts.dart';
 class AppTheme {
   // biru lebih cerah untuk kesan fresh
   static const _seed = Color(0xFF0D47A1);
-  static const _primary  = Color(0xFF1565C0); // biru utama
+  static const _primary = Color(0xFF1565C0); // biru utama
   static const _secondary = Color(0xFFFF5E8A); // aksen
-  static const _bgLight  = Color(0xFFE9F4FF); // latar belakang halus
+  static const _bgLight = Color(0xFFE9F4FF); // latar belakang halus
   static const _darkButton = Color(0xFF0D47A1);
   static final ColorScheme _lightScheme = ColorScheme.fromSeed(
     seedColor: _primary,
@@ -47,12 +47,13 @@ class AppTheme {
     ),
     iconTheme: IconThemeData(color: _lightScheme.primary),
     cardTheme: ThemeData().cardTheme.copyWith(
-      elevation: 4,
-      color: Colors.white,
-      shadowColor: Colors.black12,
-      margin: const EdgeInsets.symmetric(vertical: 10),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-    ),
+          elevation: 4,
+          color: Colors.white,
+          shadowColor: Colors.black12,
+          margin: const EdgeInsets.symmetric(vertical: 10),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        ),
     inputDecorationTheme: InputDecorationTheme(
       filled: true,
       fillColor: _lightScheme.surface.withOpacity(.9),
@@ -119,12 +120,13 @@ class AppTheme {
     ),
     iconTheme: IconThemeData(color: _darkScheme.primary),
     cardTheme: ThemeData.dark().cardTheme.copyWith(
-      elevation: 4,
-      color: const Color(0xFF1C2838),
-      shadowColor: Colors.black54,
-      margin: const EdgeInsets.symmetric(vertical: 10),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-    ),
+          elevation: 4,
+          color: const Color(0xFF1C2838),
+          shadowColor: Colors.black54,
+          margin: const EdgeInsets.symmetric(vertical: 10),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        ),
     inputDecorationTheme: InputDecorationTheme(
       filled: true,
       fillColor: _darkScheme.surface.withOpacity(.85),
@@ -181,8 +183,10 @@ class AppTheme {
   }) {
     final theme = Theme.of(context);
     final cs = theme.colorScheme;
-    final background = theme.brightness == Brightness.light ? cs.primary : cs.surface;
-    final foreground = theme.brightness == Brightness.light ? cs.onPrimary : cs.onSurface;
+    final background =
+        theme.brightness == Brightness.light ? cs.primary : cs.surface;
+    final foreground =
+        theme.brightness == Brightness.light ? cs.onPrimary : cs.onSurface;
     return AppBar(
       title: Text(title),
       leading: leading,

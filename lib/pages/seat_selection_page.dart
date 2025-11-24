@@ -404,13 +404,6 @@ class _SeatSelectionPageState extends State<SeatSelectionPage> {
         0, (max, cfg) => math.max(max, cfg['right'] as int? ?? 0));
     final maxCenter = _seatLayoutBlueprint.fold<int>(
         0, (max, cfg) => math.max(max, cfg['center'] as int? ?? 0));
-
-    double blockWidth(int count) =>
-        count > 0 ? seatSize * count + seatSpacing * (count - 1) : 0;
-
-    final leftBlockWidth = blockWidth(maxLeft);
-    final rightBlockWidth = blockWidth(maxRight);
-    final centerBlockWidth = blockWidth(maxCenter);
     final maxWalkway = _seatLayoutBlueprint.fold<double>(0, (max, cfg) {
       final row = (cfg['row'] as String?) ?? '';
       final hasLeft = (cfg['left'] as int? ?? 0) > 0;
@@ -421,114 +414,85 @@ class _SeatSelectionPageState extends State<SeatSelectionPage> {
       return max;
     });
 
+    double blockWidth(int count) =>
+        count > 0 ? seatSize * count + seatSpacing * (count - 1) : 0;
+
+    final leftBlockWidth = blockWidth(maxLeft);
+    final rightBlockWidth = blockWidth(maxRight);
+    final centerBlockWidth = blockWidth(maxCenter);
     final twoBlockWidth = (maxLeft > 0 && maxRight > 0)
         ? leftBlockWidth + rightBlockWidth + maxWalkway
         : leftBlockWidth + rightBlockWidth;
     final layoutWidth = math.max(twoBlockWidth, centerBlockWidth);
 
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final availableWidth =
-            constraints.maxWidth.isFinite && constraints.maxWidth > 0
-                ? constraints.maxWidth
-                : layoutWidth;
-        final scale = layoutWidth == 0
-            ? 1.0
-            : math.min(
-                1.0,
-                ((availableWidth / layoutWidth).clamp(0.6, 1.0) as num)
-                    .toDouble(),
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Align(
+        alignment: Alignment.centerLeft,
+        child: SizedBox(
+          width: layoutWidth,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: layouts.map((row) {
+              final leftSeats =
+                  (row['left'] as List<Map<String, dynamic>?>?) ?? const [];
+              final rightSeats =
+                  (row['right'] as List<Map<String, dynamic>?>?) ?? const [];
+              final centerSeats =
+                  (row['center'] as List<Map<String, dynamic>?>?) ?? const [];
+
+              final hasLeft = (row['leftCount'] as int) > 0;
+              final hasRight = (row['rightCount'] as int) > 0;
+              final hasCenter = (row['centerCount'] as int) > 0;
+              final hasBothSides = hasLeft && hasRight;
+              final rowHasCenterOnly = !hasLeft && !hasRight && hasCenter;
+
+              Widget buildBlock(List<Map<String, dynamic>?> seats, double width,
+                  ColorScheme cs) {
+                return SizedBox(
+                  width: width,
+                  child: Wrap(
+                    spacing: seatSpacing,
+                    runSpacing: seatSpacing,
+                    alignment: WrapAlignment.center,
+                    children: seats
+                        .map((seat) => seat == null
+                            ? _buildSeatPlaceholder(seatSize, cs)
+                            : _buildSeatTile(seat, cs, seatSize))
+                        .toList(),
+                  ),
+                );
+              }
+
+              return Padding(
+                padding: const EdgeInsets.symmetric(vertical: 6),
+                child: SizedBox(
+                  width: layoutWidth,
+                  child: rowHasCenterOnly
+                      ? Align(
+                          alignment: Alignment.center,
+                          child: buildBlock(
+                              centerSeats, blockWidth(centerSeats.length), cs),
+                        )
+                      : Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            if (hasLeft)
+                              buildBlock(
+                                  leftSeats, blockWidth(leftSeats.length), cs),
+                            if (hasBothSides)
+                              SizedBox(width: walkwayForRow(row['row'])),
+                            if (hasRight)
+                              buildBlock(rightSeats,
+                                  blockWidth(rightSeats.length), cs),
+                          ],
+                        ),
+                ),
               );
-        final seatSizeScaled = seatSize * scale;
-        final spacingScaled = seatSpacing * scale;
-        final layoutWidthScaled = layoutWidth * scale;
-
-        double clampScale(double min, double max) =>
-            scale.clamp(min, max).toDouble();
-        double blockWidthScaled(int count) =>
-            count > 0 ? seatSizeScaled * count + spacingScaled * (count - 1) : 0;
-        double walkwayScaled(String label) =>
-            math.max(spacingScaled, walkwayForRow(label) * scale);
-
-        return SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          child: Align(
-            alignment: Alignment.centerLeft,
-            child: SizedBox(
-              width: layoutWidthScaled,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: layouts.map((row) {
-                  final leftSeats =
-                      (row['left'] as List<Map<String, dynamic>?>?) ?? const [];
-                  final rightSeats =
-                      (row['right'] as List<Map<String, dynamic>?>?) ?? const [];
-                  final centerSeats =
-                      (row['center'] as List<Map<String, dynamic>?>?) ?? const [];
-
-                  final hasLeft = (row['leftCount'] as int) > 0;
-                  final hasRight = (row['rightCount'] as int) > 0;
-                  final hasCenter = (row['centerCount'] as int) > 0;
-                  final hasBothSides = hasLeft && hasRight;
-                  final rowHasCenterOnly = !hasLeft && !hasRight && hasCenter;
-                  final rowLabel = (row['row'] as String?) ?? '';
-                  final walkwaySpacingScaled = walkwayScaled(rowLabel);
-                  final rowPadding = 6.0 * clampScale(0.7, 1.0);
-
-                  Widget buildBlock(
-                      List<Map<String, dynamic>?> seats, double width) {
-                    return SizedBox(
-                      width: width,
-                      child: Wrap(
-                        spacing: spacingScaled,
-                        runSpacing: spacingScaled,
-                        alignment: WrapAlignment.center,
-                        children: seats
-                            .map((seat) => seat == null
-                                ? _buildSeatPlaceholder(seatSizeScaled, cs)
-                                : _buildSeatTile(seat, cs, seatSizeScaled))
-                            .toList(),
-                      ),
-                    );
-                  }
-
-                  return Padding(
-                    padding: EdgeInsets.symmetric(vertical: rowPadding),
-                    child: SizedBox(
-                      width: layoutWidthScaled,
-                      child: rowHasCenterOnly
-                          ? Align(
-                              alignment: Alignment.center,
-                              child: buildBlock(
-                                centerSeats,
-                                blockWidthScaled(centerSeats.length),
-                              ),
-                            )
-                          : Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                if (hasLeft)
-                                  buildBlock(
-                                    leftSeats,
-                                    blockWidthScaled(leftSeats.length),
-                                  ),
-                                if (hasBothSides)
-                                  SizedBox(width: walkwaySpacingScaled),
-                                if (hasRight)
-                                  buildBlock(
-                                    rightSeats,
-                                    blockWidthScaled(rightSeats.length),
-                                  ),
-                              ],
-                            ),
-                    ),
-                  );
-                }).toList(),
-              ),
-            ),
+            }).toList(),
           ),
-        );
-      },
+        ),
+      ),
     );
   }
 
@@ -671,8 +635,8 @@ class _SeatSelectionPageState extends State<SeatSelectionPage> {
     );
   }
 
-  Widget _buildMiniSeatBox(
-      Map<String, dynamic>? seat, ColorScheme cs, double size) {
+  Widget _buildMiniSeatBox(Map<String, dynamic>? seat, ColorScheme cs) {
+    const miniSeat = 16.0;
     Color bg;
     Color border = cs.outlineVariant.withOpacity(.6);
 
@@ -698,8 +662,8 @@ class _SeatSelectionPageState extends State<SeatSelectionPage> {
     }
 
     return Container(
-      width: size,
-      height: size,
+      width: miniSeat,
+      height: miniSeat,
       decoration: BoxDecoration(
         color: bg,
         borderRadius: BorderRadius.circular(4),
@@ -719,6 +683,7 @@ class _SeatSelectionPageState extends State<SeatSelectionPage> {
         ['A', 'B', 'C', 'D'].contains(label.toUpperCase())
             ? miniWalkwayLarge
             : miniWalkwayDefault;
+
     final layouts = _rowLayouts();
 
     final maxLeft = _seatLayoutBlueprint.fold<int>(
@@ -727,13 +692,6 @@ class _SeatSelectionPageState extends State<SeatSelectionPage> {
         0, (max, cfg) => math.max(max, cfg['right'] as int? ?? 0));
     final maxCenter = _seatLayoutBlueprint.fold<int>(
         0, (max, cfg) => math.max(max, cfg['center'] as int? ?? 0));
-
-    double blockWidth(int count) =>
-        count > 0 ? miniSeat * count + miniSpacing * (count - 1) : 0;
-
-    final leftBlockWidth = blockWidth(maxLeft);
-    final rightBlockWidth = blockWidth(maxRight);
-    final centerBlockWidth = blockWidth(maxCenter);
     final maxWalkway = _seatLayoutBlueprint.fold<double>(0, (max, cfg) {
       final row = (cfg['row'] as String?) ?? '';
       final hasLeft = (cfg['left'] as int? ?? 0) > 0;
@@ -743,6 +701,13 @@ class _SeatSelectionPageState extends State<SeatSelectionPage> {
       }
       return max;
     });
+
+    double blockWidth(int count) =>
+        count > 0 ? miniSeat * count + miniSpacing * (count - 1) : 0;
+
+    final leftBlockWidth = blockWidth(maxLeft);
+    final rightBlockWidth = blockWidth(maxRight);
+    final centerBlockWidth = blockWidth(maxCenter);
     final twoBlockWidth = (maxLeft > 0 && maxRight > 0)
         ? leftBlockWidth + rightBlockWidth + maxWalkway
         : leftBlockWidth + rightBlockWidth;
@@ -750,6 +715,18 @@ class _SeatSelectionPageState extends State<SeatSelectionPage> {
     const doorWidth = 32.0;
     final containerWidth =
         seatAreaWidth + doorWidth + doorColumnSpacing + extraDoorAllowance + 24;
+
+    Widget buildMiniBlock(List<Map<String, dynamic>?> seats, double width) {
+      return SizedBox(
+        width: width,
+        child: Wrap(
+          spacing: miniSpacing,
+          runSpacing: miniSpacing,
+          alignment: WrapAlignment.center,
+          children: seats.map((seat) => _buildMiniSeatBox(seat, cs)).toList(),
+        ),
+      );
+    }
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -759,186 +736,119 @@ class _SeatSelectionPageState extends State<SeatSelectionPage> {
             style:
                 TextStyle(fontWeight: FontWeight.w700, color: cs.onBackground)),
         const SizedBox(height: 12),
-        LayoutBuilder(
-          builder: (context, constraints) {
-            final availableWidth =
-                constraints.maxWidth.isFinite && constraints.maxWidth > 0
-                    ? constraints.maxWidth
-                    : containerWidth;
-            final scale = containerWidth == 0
-                ? 1.0
-                : math.min(
-                    1.0,
-                    ((availableWidth / containerWidth)
-                            .clamp(0.65, 1.0) as num)
-                        .toDouble(),
-                  );
-            double clampScale(double min, double max) =>
-                scale.clamp(min, max).toDouble();
-
-            final seatSizeScaled = miniSeat * scale;
-            final spacingScaled = miniSpacing * scale;
-            final seatAreaWidthScaled = seatAreaWidth * scale;
-            final containerWidthScaled = containerWidth * scale;
-            final doorSpacingScaled = doorColumnSpacing * scale;
-            final rowPadding = 4.0 * clampScale(0.7, 1.0);
-            final screenHeight = 32.0 * clampScale(0.75, 1.0);
-            final screenSpacing = 12.0 * clampScale(0.6, 1.0);
-
-            double blockWidthScaled(int count) =>
-                count > 0 ? seatSizeScaled * count + spacingScaled * (count - 1) : 0;
-            double walkwayScaled(String label) =>
-                math.max(spacingScaled, rowWalkway(label) * scale);
-
-            Widget buildMiniBlock(
-                List<Map<String, dynamic>?> seats, double width) {
-              return SizedBox(
-                width: width,
-                child: Wrap(
-                  spacing: spacingScaled,
-                  runSpacing: spacingScaled,
-                  alignment: WrapAlignment.center,
-                  children: seats
-                      .map((seat) => _buildMiniSeatBox(seat, cs, seatSizeScaled))
-                      .toList(),
-                ),
-              );
-            }
-
-            return SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: Align(
-                alignment: Alignment.centerLeft,
-                child: Container(
-                  width: containerWidthScaled,
-                  padding: EdgeInsets.all(12 * clampScale(0.75, 1.0)),
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(color: cs.outlineVariant),
-                  ),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      SizedBox(
-                        width: seatAreaWidthScaled,
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            Container(
-                              width: seatAreaWidthScaled,
-                              height: screenHeight,
-                              decoration: BoxDecoration(
-                                color: cs.primary.withOpacity(.12),
-                                borderRadius: BorderRadius.circular(8),
-                                border: Border.all(color: cs.primary),
-                              ),
-                              alignment: Alignment.center,
-                              child: Text(
-                                'LAYAR',
-                                style: TextStyle(
-                                  fontSize: 11 * clampScale(0.75, 1.0),
-                                  fontWeight: FontWeight.w700,
-                                  letterSpacing: 1.8 * clampScale(0.6, 1.0),
-                                  color: cs.primary,
-                                ),
-                              ),
-                            ),
-                            SizedBox(height: screenSpacing),
-                            ...layouts.map((row) {
-                              final rowLabel = (row['row'] as String?) ?? '';
-                              final walkwaySpacingScaled =
-                                  walkwayScaled(rowLabel);
-                              final leftSeats =
-                                  (row['left'] as List<Map<String, dynamic>?>?) ??
-                                      const [];
-                              final rightSeats =
-                                  (row['right'] as List<Map<String, dynamic>?>?) ??
-                                      const [];
-                              final centerSeats =
-                                  (row['center'] as List<Map<String, dynamic>?>?) ??
-                                      const [];
-
-                              final leftCount = row['leftCount'] as int;
-                              final rightCount = row['rightCount'] as int;
-                              final centerCount = row['centerCount'] as int;
-                              final hasLeft = leftCount > 0;
-                              final hasRight = rightCount > 0;
-                              final hasCenter = centerCount > 0;
-                              final hasBothSides = hasLeft && hasRight;
-                              final rowHasCenterOnly =
-                                  !hasLeft && !hasRight && hasCenter;
-
-                              return Padding(
-                                padding:
-                                    EdgeInsets.symmetric(vertical: rowPadding),
-                                child: SizedBox(
-                                  width: seatAreaWidthScaled,
-                                  child: rowHasCenterOnly
-                                      ? Align(
-                                          alignment: Alignment.center,
-                                          child: buildMiniBlock(
-                                            centerSeats,
-                                            blockWidthScaled(centerSeats.length),
-                                          ),
-                                        )
-                                      : Row(
-                                          mainAxisAlignment:
-                                              MainAxisAlignment.center,
-                                          children: [
-                                            if (hasLeft)
-                                              buildMiniBlock(
-                                                leftSeats,
-                                                blockWidthScaled(
-                                                    leftSeats.length),
-                                              ),
-                                            if (hasBothSides)
-                                              SizedBox(
-                                                  width:
-                                                      walkwaySpacingScaled),
-                                            if (hasRight)
-                                              buildMiniBlock(
-                                                rightSeats,
-                                                blockWidthScaled(
-                                                    rightSeats.length),
-                                              ),
-                                          ],
-                                        ),
-                                ),
-                              );
-                            }),
-                          ],
-                        ),
-                      ),
-                      SizedBox(width: doorSpacingScaled),
-                      _buildDenahDoor(cs, scale: scale),
-                    ],
-                  ),
-                ),
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: Align(
+            alignment: Alignment.centerLeft,
+            child: Container(
+              width: containerWidth,
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: cs.outlineVariant),
               ),
-            );
-          },
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  SizedBox(
+                    width: seatAreaWidth,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Container(
+                          width: seatAreaWidth,
+                          height: 32,
+                          decoration: BoxDecoration(
+                            color: cs.primary.withOpacity(.12),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: cs.primary),
+                          ),
+                          alignment: Alignment.center,
+                          child: Text(
+                            'LAYAR',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                              letterSpacing: 1.8,
+                              color: cs.primary,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        ...layouts.map((row) {
+                          final rowLabel = (row['row'] as String?) ?? '';
+                          final walkwaySpacing = rowWalkway(rowLabel);
+                          final leftSeats =
+                              (row['left'] as List<Map<String, dynamic>?>?) ??
+                                  const [];
+                          final rightSeats =
+                              (row['right'] as List<Map<String, dynamic>?>?) ??
+                                  const [];
+                          final centerSeats =
+                              (row['center'] as List<Map<String, dynamic>?>?) ??
+                                  const [];
+
+                          final leftCount = row['leftCount'] as int;
+                          final rightCount = row['rightCount'] as int;
+                          final centerCount = row['centerCount'] as int;
+                          final hasLeft = leftCount > 0;
+                          final hasRight = rightCount > 0;
+                          final hasCenter = centerCount > 0;
+                          final hasBothSides = hasLeft && hasRight;
+                          final rowHasCenterOnly =
+                              !hasLeft && !hasRight && hasCenter;
+
+                          return Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 4),
+                            child: SizedBox(
+                              width: seatAreaWidth,
+                              child: rowHasCenterOnly
+                                  ? Align(
+                                      alignment: Alignment.center,
+                                      child: buildMiniBlock(centerSeats,
+                                          blockWidth(centerSeats.length)),
+                                    )
+                                  : Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.center,
+                                      children: [
+                                        if (hasLeft)
+                                          buildMiniBlock(leftSeats,
+                                              blockWidth(leftSeats.length)),
+                                        if (hasBothSides)
+                                          SizedBox(width: walkwaySpacing),
+                                        if (hasRight)
+                                          buildMiniBlock(rightSeats,
+                                              blockWidth(rightSeats.length)),
+                                      ],
+                                    ),
+                            ),
+                          );
+                        }),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: doorColumnSpacing),
+                  _buildDenahDoor(cs),
+                ],
+              ),
+            ),
+          ),
         ),
       ],
     );
   }
 
-  Widget _buildDenahDoor(ColorScheme cs, {double scale = 1.0}) {
-    final clamped = scale.clamp(0.6, 1.0).toDouble();
-    final doorWidth = 32 * clamped;
-    final doorHeight = 64 * clamped;
-    final topSpacing = 44 * clamped;
-    final bottomSpacing = 4 * clamped;
-    final fontSize = (11 * clamped).clamp(8.0, 11.0);
-
+  Widget _buildDenahDoor(ColorScheme cs) {
     return Column(
       children: [
-        SizedBox(height: topSpacing),
+        const SizedBox(height: 44),
         Container(
-          width: doorWidth,
-          height: doorHeight,
+          width: 32,
+          height: 64,
           decoration: BoxDecoration(
             color: cs.tertiary.withOpacity(.2),
-            borderRadius: BorderRadius.circular(8 * clamped),
+            borderRadius: BorderRadius.circular(8),
             border: Border.all(color: cs.primary),
           ),
           alignment: Alignment.center,
@@ -947,13 +857,11 @@ class _SeatSelectionPageState extends State<SeatSelectionPage> {
             child: Text(
               'PINTU',
               style: TextStyle(
-                  fontSize: fontSize,
-                  fontWeight: FontWeight.w600,
-                  color: cs.primary),
+                  fontSize: 11, fontWeight: FontWeight.w600, color: cs.primary),
             ),
           ),
         ),
-        SizedBox(height: bottomSpacing),
+        const SizedBox(height: 4),
       ],
     );
   }

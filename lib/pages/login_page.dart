@@ -31,11 +31,10 @@ class _LoginPageState extends State<LoginPage> {
       final result = await api.login(user, pass);
       final role = (result['role'] ?? 'customer').toString();
       if (!mounted) return;
-      final target = role == 'admin'
-          ? const AdminHomePage()
-          : const CustomerHomePage();
-      Navigator.pushReplacement(context,
-          MaterialPageRoute(builder: (_) => target));
+      final target =
+          role == 'admin' ? const AdminHomePage() : const CustomerHomePage();
+      Navigator.pushReplacement(
+          context, MaterialPageRoute(builder: (_) => target));
     } on ApiException catch (e) {
       final msg = (e.status == 401 || e.status == 404)
           ? 'Username atau password salah'
@@ -62,12 +61,15 @@ class _LoginPageState extends State<LoginPage> {
           Positioned(
             top: -60,
             left: -40,
-            child: CircleAvatar(radius: 110, backgroundColor: cs.primary.withOpacity(.10)),
+            child: CircleAvatar(
+                radius: 110, backgroundColor: cs.primary.withOpacity(.10)),
           ),
           Positioned(
             bottom: -50,
             right: -30,
-            child: CircleAvatar(radius: 90, backgroundColor: cs.primaryContainer.withOpacity(.18)),
+            child: CircleAvatar(
+                radius: 90,
+                backgroundColor: cs.primaryContainer.withOpacity(.18)),
           ),
           Center(
             child: SingleChildScrollView(
@@ -116,7 +118,8 @@ class _LoginPageState extends State<LoginPage> {
                   ),
                   const SizedBox(height: 22),
                   Card(
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(24)),
                     elevation: 4,
                     child: Padding(
                       padding: const EdgeInsets.fromLTRB(20, 18, 20, 24),
@@ -152,7 +155,8 @@ class _LoginPageState extends State<LoginPage> {
                             child: FilledButton(
                               onPressed: _loading ? null : _login,
                               child: Padding(
-                                padding: const EdgeInsets.symmetric(vertical: 12),
+                                padding:
+                                    const EdgeInsets.symmetric(vertical: 12),
                                 child: Text(_loading ? 'Masuk...' : 'Masuk'),
                               ),
                             ),

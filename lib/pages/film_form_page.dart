@@ -143,7 +143,8 @@ class _FilmFormPageState extends State<FilmFormPage> {
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Card(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
           elevation: 4,
           child: Padding(
             padding: const EdgeInsets.all(18),
@@ -206,7 +207,8 @@ class _FilmFormPageState extends State<FilmFormPage> {
                       final name =
                           (g['nama'] ?? g['name'] ?? g['judul'] ?? 'Tanpa Nama')
                               .toString();
-                      return DropdownMenuItem<int>(value: id, child: Text(name));
+                      return DropdownMenuItem<int>(
+                          value: id, child: Text(name));
                     }).toList(),
                     onChanged: (v) => setState(() => _selectedGenreId = v),
                     decoration: const InputDecoration(

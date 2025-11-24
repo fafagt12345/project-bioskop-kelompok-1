@@ -78,7 +78,8 @@ class _CustomerHomePageState extends State<CustomerHomePage> {
         padding: const EdgeInsets.all(18),
         children: [
           Card(
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
             elevation: 3,
             margin: EdgeInsets.zero,
             child: ListTile(
@@ -93,7 +94,8 @@ class _CustomerHomePageState extends State<CustomerHomePage> {
           ),
           const SizedBox(height: 16),
           Card(
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
             elevation: 3,
             margin: EdgeInsets.zero,
             child: ListTile(
