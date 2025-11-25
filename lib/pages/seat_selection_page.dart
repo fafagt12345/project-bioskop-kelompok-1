@@ -386,10 +386,10 @@ class _SeatSelectionPageState extends State<SeatSelectionPage> {
   }
 
   Widget _buildSeatSketch(ColorScheme cs) {
-    const seatSize = 54.0;
-    const seatSpacing = 10.0;
+    const seatSize = 40.0;
+    const seatSpacing = 5.0;
     const walkwayDefault = 40.0;
-    const walkwayLarge = seatSize + seatSpacing;
+    const walkwayLarge = walkwayDefault + seatSize + seatSpacing;
     double walkwayForRow(String label) =>
         ['A', 'B', 'C', 'D'].contains(label.toUpperCase())
             ? walkwayLarge
@@ -572,7 +572,7 @@ class _SeatSelectionPageState extends State<SeatSelectionPage> {
   }
 
   Widget _buildSeatTile(Map<String, dynamic> seat, ColorScheme cs,
-      [double size = 54]) {
+      [double size = 42]) {
     final seatId = (seat['kursi_id'] is num)
         ? (seat['kursi_id'] as num).toInt()
         : int.tryParse('${seat['kursi_id']}') ?? 0;
@@ -624,6 +624,7 @@ class _SeatSelectionPageState extends State<SeatSelectionPage> {
           _labelOf(seat),
           style: TextStyle(
             fontWeight: FontWeight.w700,
+            fontSize: 10,
             color: sold
                 ? cs.outline
                 : selected
@@ -847,7 +848,7 @@ class _SeatSelectionPageState extends State<SeatSelectionPage> {
           width: 32,
           height: 64,
           decoration: BoxDecoration(
-            color: cs.tertiary.withOpacity(.2),
+            color: cs.primary.withOpacity(.12),
             borderRadius: BorderRadius.circular(8),
             border: Border.all(color: cs.primary),
           ),
