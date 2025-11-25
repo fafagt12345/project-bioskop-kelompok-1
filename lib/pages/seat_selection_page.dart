@@ -714,7 +714,7 @@ class _SeatSelectionPageState extends State<SeatSelectionPage> {
     final seatAreaWidth = math.max(twoBlockWidth, centerBlockWidth);
     const doorWidth = 32.0;
     final containerWidth =
-        seatAreaWidth + doorWidth + doorColumnSpacing + extraDoorAllowance + 24;
+        seatAreaWidth + doorWidth + doorColumnSpacing + extraDoorAllowance + 32;
 
     Widget buildMiniBlock(List<Map<String, dynamic>?> seats, double width) {
       return SizedBox(
