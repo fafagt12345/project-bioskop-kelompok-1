@@ -78,7 +78,7 @@ class _HomePageState extends State<HomePage> {
       backgroundColor: Theme.of(context).colorScheme.background,
       appBar: AppTheme.buildGradientAppBar(
         context,
-        'Bioskop • Home',
+        'LotusCinema • Home',
         actions: [
           IconButton(
             icon: _loggingOut

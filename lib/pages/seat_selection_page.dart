@@ -319,7 +319,7 @@ class _SeatSelectionPageState extends State<SeatSelectionPage> {
         'jadwal_mulai': _jadwal?['jam_mulai'],
         'jadwal_selesai': _jadwal?['jam_selesai'],
         'purchase_time': DateTime.now().toIso8601String(),
-        'project_name': 'BioskopKu',
+        'project_name': 'Lotus Cinema',
       };
 
       if (!mounted) return;

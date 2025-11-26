@@ -187,7 +187,8 @@ class CheckoutSuccessPage extends StatelessWidget {
     }
   }
 
-  String get _projectName => (data['project_name'] ?? 'BioskopKu').toString();
+  String get _projectName =>
+      (data['project_name'] ?? 'Lotus Cinema').toString();
   String get _filmTitle =>
       (data['film_title'] ?? data['film'] ?? '-').toString();
   String get _studioLabel => (data['studio_name'] ??
@@ -300,21 +301,21 @@ class CheckoutSuccessPage extends StatelessWidget {
                 pw.Text(project,
                     style: pw.TextStyle(
                         fontSize: 26, fontWeight: pw.FontWeight.bold)),
-                pw.Text('ID Tiket          : #$ticketIdLabel'),
-                pw.Text('Film              : $film'),
-                pw.Text('Studio            : $studio'),
-                pw.Text('Kursi             : $seatLabel'),
-                pw.Text('Jadwal            : $scheduleDate'),
+                pw.Text('ID Tiket              : #$ticketIdLabel'),
+                pw.Text('Film                  : $film'),
+                pw.Text('Studio                : $studio'),
+                pw.Text('Kursi                 : $seatLabel'),
+                pw.Text('Jadwal                : $scheduleDate'),
                 if (scheduleTime.isNotEmpty)
-                  pw.Text('Jam             : $scheduleTime'),
-                pw.Text('Tanggal Beli      : $purchase'),
+                  pw.Text('Jam                 : $scheduleTime'),
+                pw.Text('Tanggal Beli          : $purchase'),
                 if (price != null)
-                  pw.Text('Harga           : Rp ${_formatRp(price)}'),
+                  pw.Text('Harga               : Rp ${_formatRp(price)}'),
                 pw.SizedBox(height: 18),
                 pw.Divider(thickness: 1),
                 pw.SizedBox(height: 24),
-                pw.Text('Harap datang 15 menit sebelum jadwal pemutaran.',
-                    style: pw.TextStyle(fontSize: 12)),
+                pw.Text('*harap datang 15 menit sebelum jadwal pemutaran.',
+                    style: pw.TextStyle(fontSize: 11)),
               ],
             ),
           ),
@@ -415,7 +416,7 @@ class CheckoutSuccessPage extends StatelessWidget {
     final tickets = _ticketItems();
     return Scaffold(
       backgroundColor: Theme.of(context).colorScheme.background,
-      appBar: AppTheme.buildGradientAppBar(context, 'Berhasil Checkout'),
+      appBar: AppTheme.buildGradientAppBar(context, 'Checkout'),
       body: Padding(
         padding: const EdgeInsets.all(16),
         child: Card(

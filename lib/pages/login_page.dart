@@ -103,7 +103,7 @@ class _LoginPageState extends State<LoginPage> {
                                   color: Colors.white, size: 36),
                             ),
                             const SizedBox(height: 14),
-                            Text('Selamat datang di BioskopKu',
+                            Text('Selamat datang di Lotus Cinema',
                                 style: TextStyle(
                                     fontSize: 22,
                                     fontWeight: FontWeight.w700,

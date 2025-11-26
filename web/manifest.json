@@ -1,11 +1,11 @@
 {
-    "name": "bioskop_app",
-    "short_name": "bioskop_app",
+    "name": "LotusCinema",
+    "short_name": "LotusCinema",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",
     "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "description": "LotusCinema - Your gateway to the best movies.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

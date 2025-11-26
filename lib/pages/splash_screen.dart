@@ -60,7 +60,7 @@ class _SplashScreenState extends State<SplashScreen> {
               gradient: true,
               padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 18),
               child: const Text(
-                'BioskopKu',
+                'Lotus Cinema',
                 style: TextStyle(fontSize: 30, fontWeight: FontWeight.bold),
               ),
             ),
