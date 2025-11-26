@@ -22,6 +22,7 @@ class SeatSelectionPage extends StatefulWidget {
 
 class _SeatSelectionPageState extends State<SeatSelectionPage> {
   final api = ApiService();
+  Map<String, dynamic>? _jadwal;
 
   String? _role; // tersimpan role user (admin/customer)
 
@@ -104,10 +105,22 @@ class _SeatSelectionPageState extends State<SeatSelectionPage> {
         _rebuildIndex(parsed);
         setState(() => _seats = parsed);
       }
+      await _ensureJadwalInfo();
     } catch (e) {
       setState(() => _error = 'Gagal load kursi: $e');
     } finally {
       if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  Future<void> _ensureJadwalInfo() async {
+    if (_jadwal != null) return;
+    try {
+      final info = await api.jadwalShow(widget.jadwalId);
+      if (!mounted) return;
+      setState(() => _jadwal = info);
+    } catch (_) {
+      // abaikan jika gagal, fallback ditangani saat cetak
     }
   }
 
@@ -299,6 +312,14 @@ class _SeatSelectionPageState extends State<SeatSelectionPage> {
                       'harga': _priceOfId(id),
                     })
                 .toList(),
+        'film_title': widget.filmTitle,
+        'studio_name': _jadwal?['nama_studio'],
+        'studio_id': _jadwal?['studio_id'] ?? widget.studioId,
+        'jadwal_tanggal': _jadwal?['tanggal'],
+        'jadwal_mulai': _jadwal?['jam_mulai'],
+        'jadwal_selesai': _jadwal?['jam_selesai'],
+        'purchase_time': DateTime.now().toIso8601String(),
+        'project_name': 'BioskopKu',
       };
 
       if (!mounted) return;
