@@ -246,7 +246,7 @@ class _SeatSelectionPageState extends State<SeatSelectionPage> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-            content: Text('Akun admin tidak diperbolehkan melakukan checkout')),
+            content: Text('Akun admin tidak dapat melakukan checkout tiket')),
       );
       return;
     }
@@ -533,7 +533,7 @@ class _SeatSelectionPageState extends State<SeatSelectionPage> {
             style: TextStyle(color: cs.onSurfaceVariant)),
         const SizedBox(height: 8),
         Text(
-          'Denah studio di bawah memperlihatkan posisi kursi tanpa nomor. Tambah kursi bila jumlahnya belum sesuai kapasitas studio.',
+          'Catatan : Silahkan pilih kursi sesuai keinginan Anda, dan jangan lupa untuk melakukan konfirmasi sebelum melanjutkan.',
           style: TextStyle(fontSize: 12, color: cs.onSurfaceVariant),
         ),
       ],
@@ -940,6 +940,14 @@ class _SeatSelectionPageState extends State<SeatSelectionPage> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
+                          Text(
+                            'Silahkan pilih kursi :',
+                            style: TextStyle(
+                              fontWeight: FontWeight.w600,
+                              color: cs.onBackground,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
                           _buildSeatSketch(cs),
                           _buildStudioDenah(cs),
                           _buildLegend(cs),
