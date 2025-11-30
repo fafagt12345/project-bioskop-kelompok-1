@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart'
     show kIsWeb, defaultTargetPlatform, TargetPlatform;
+import 'package:http/http.dart' as _client;
 import 'package:shared_preferences/shared_preferences.dart';
 
 class ApiException implements Exception {
@@ -62,14 +63,26 @@ class ApiService {
   final Dio _dio;
   final String baseUrl;
   String? _token;
-
-  Map<int, String>? _genreCache;
+  late final String _effectiveBaseUrl;
 
   static String suggestBaseUrl() {
     if (kIsWeb) return 'http://127.0.0.1:8000';
     if (defaultTargetPlatform == TargetPlatform.android)
       return 'http://10.0.2.2:8000';
     return 'http://127.0.0.1:8000';
+  }
+
+  static String _normalizeBaseUrl(String raw) {
+    var value = raw.trim();
+    if (!value.contains('://')) value = 'http://$value';
+    final uri = Uri.parse(value);
+    final isAndroidDevice =
+        !kIsWeb && defaultTargetPlatform == TargetPlatform.android;
+    if (isAndroidDevice &&
+        (uri.host == '127.0.0.1' || uri.host.toLowerCase() == 'localhost')) {
+      return uri.replace(host: '10.0.2.2').toString();
+    }
+    return value;
   }
 
   ApiService({String? base})
@@ -84,19 +97,14 @@ class ApiService {
             },
           ),
         ) {
+    _effectiveBaseUrl = _normalizeBaseUrl(baseUrl);
     _dio.interceptors.add(InterceptorsWrapper(
-      // make onRequest async so we can ensure correct identity header:
-      // Determine Authorization header from stored token and userId:
-      // - if token is numeric -> use it
-      // - else if userId exists -> use userId (preferred when server does not persist api_token)
-      // - else use token (string)
       onRequest: (opt, handler) async {
         if (!opt.path.startsWith('http')) {
-          final prefix = base ?? suggestBaseUrl();
           final norm = opt.path.startsWith('/api/')
               ? opt.path
               : '/api${opt.path.startsWith('/') ? '' : '/'}${opt.path}';
-          opt.baseUrl = prefix;
+          opt.baseUrl = _effectiveBaseUrl;
           opt.path = norm;
         }
         try {
@@ -547,6 +555,8 @@ class ApiService {
     }
   }
 
+  Map<int, String>? _genreCache;
+
   Future<Map<int, String>> _ensureGenres() async {
     if (_genreCache != null) return _genreCache!;
     final map = <int, String>{};
@@ -674,5 +684,53 @@ class ApiService {
       if (userRole is String && userRole.isNotEmpty) return userRole;
     }
     return fallback;
+  }
+
+  String _baseOrigin() {
+    final uri = Uri.parse(_effectiveBaseUrl);
+    final port = (uri.hasPort && uri.port != 80 && uri.port != 443)
+        ? ':${uri.port}'
+        : '';
+    return '${uri.scheme}://${uri.host}$port';
+  }
+
+  String? resolvePosterUrl(String? rawPath) {
+    if (rawPath == null) return null;
+    var path = rawPath.trim().replaceAll('\\', '/');
+    if (path.isEmpty) return null;
+    final baseOrigin = _baseOrigin();
+
+    const localhostAliases = [
+      'http://127.0.0.1',
+      'https://127.0.0.1',
+      'http://localhost',
+      'https://localhost',
+    ];
+    for (final alias in localhostAliases) {
+      if (path.startsWith(alias)) {
+        return path.replaceFirst(alias, baseOrigin);
+      }
+    }
+
+    if (path.startsWith('http://') || path.startsWith('https://')) {
+      return path;
+    }
+
+    final lower = path.toLowerCase();
+    if (lower.startsWith('public/poster/')) {
+      path = 'storage/' + path.substring('public/'.length);
+    } else if (lower.startsWith('poster/')) {
+      path = 'storage/' + path;
+    } else if (!path.contains('/')) {
+      path = 'storage/poster/$path';
+    } else if (!lower.startsWith('storage/poster/')) {
+      path = 'storage/$path';
+    }
+
+    if (path.startsWith('assets/')) {
+      return path;
+    }
+    if (path.startsWith('/')) path = path.substring(1);
+    return '$baseOrigin/$path';
   }
 }

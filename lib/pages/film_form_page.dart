@@ -1,3 +1,6 @@
+import 'dart:convert';
+import 'dart:typed_data';
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import '../api_service.dart';
 import '../theme/app_theme.dart';
@@ -20,6 +23,10 @@ class _FilmFormPageState extends State<FilmFormPage> {
   final _judulC = TextEditingController();
   final _sinopsisC = TextEditingController();
   final _durasiC = TextEditingController();
+  final _hargaC = TextEditingController();
+  Uint8List? _posterBytes;
+  String? _posterFileName;
+  String? _posterPreviewPath;
 
   bool _saving = false;
   String? _error;
@@ -39,6 +46,10 @@ class _FilmFormPageState extends State<FilmFormPage> {
       _durasiC.text = (m['durasi'] ?? '').toString();
       final gidRaw = m['genre_id'] ?? m['id_genre'];
       _selectedGenreId = gidRaw is int ? gidRaw : int.tryParse('$gidRaw');
+      if (m['harga'] != null) _hargaC.text = '${m['harga']}';
+      final rawPoster =
+          (m['poster_asset_url'] ?? m['poster_url'] ?? m['poster'])?.toString();
+      _posterPreviewPath = api.resolvePosterUrl(rawPoster) ?? rawPoster;
     }
     _loadGenres();
   }
@@ -48,6 +59,7 @@ class _FilmFormPageState extends State<FilmFormPage> {
     _judulC.dispose();
     _sinopsisC.dispose();
     _durasiC.dispose();
+    _hargaC.dispose();
     super.dispose();
   }
 
@@ -84,6 +96,90 @@ class _FilmFormPageState extends State<FilmFormPage> {
     }
   }
 
+  Future<void> _pickPoster() async {
+    final result = await FilePicker.platform
+        .pickFiles(type: FileType.image, withData: true);
+    if (result == null || result.files.isEmpty) return;
+    final file = result.files.single;
+    if (file.bytes == null) return;
+    setState(() {
+      _posterBytes = file.bytes;
+      _posterFileName = file.name.isNotEmpty ? file.name : null;
+      _posterPreviewPath = null;
+    });
+  }
+
+  String _ensureFileName() {
+    if (_posterFileName != null && _posterFileName!.contains('.')) {
+      return _posterFileName!;
+    }
+    final title = _judulC.text.trim().isEmpty
+        ? 'poster'
+        : _judulC.text
+            .trim()
+            .toLowerCase()
+            .replaceAll(RegExp(r'[^a-z0-9]+'), '-');
+    return '$title.png';
+  }
+
+  String _mimeFromName(String name) {
+    final lower = name.toLowerCase();
+    if (lower.endsWith('.jpg') || lower.endsWith('.jpeg')) return 'image/jpeg';
+    if (lower.endsWith('.gif')) return 'image/gif';
+    return 'image/png';
+  }
+
+  Widget _posterPreviewBox(ColorScheme cs) {
+    Widget child;
+    if (_posterBytes != null) {
+      child = Image.memory(
+        _posterBytes!,
+        width: 140,
+        height: 210,
+        fit: BoxFit.cover,
+      );
+    } else if (_posterPreviewPath != null && _posterPreviewPath!.isNotEmpty) {
+      final resolved =
+          api.resolvePosterUrl(_posterPreviewPath) ?? _posterPreviewPath!;
+      final isNetwork =
+          resolved.startsWith('http://') || resolved.startsWith('https://');
+      child = isNetwork
+          ? Image.network(
+              resolved,
+              width: 140,
+              height: 210,
+              fit: BoxFit.cover,
+              errorBuilder: (_, __, ___) =>
+                  const Icon(Icons.broken_image, size: 48),
+            )
+          : Image.asset(
+              resolved,
+              width: 140,
+              height: 210,
+              fit: BoxFit.cover,
+              errorBuilder: (_, __, ___) =>
+                  const Icon(Icons.broken_image, size: 48),
+            );
+    } else {
+      child = Icon(Icons.image, size: 48, color: cs.onSurfaceVariant);
+    }
+
+    return Container(
+      width: 140,
+      height: 210,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: cs.outlineVariant),
+        color: cs.surfaceVariant.withOpacity(.3),
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(14),
+        child: child,
+      ),
+    );
+  }
+
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
     if (_selectedGenreId == null) {
@@ -97,7 +193,16 @@ class _FilmFormPageState extends State<FilmFormPage> {
       'sinopsis': _sinopsisC.text.trim(),
       'durasi': int.tryParse(_durasiC.text.trim()) ?? 0,
       'genre_id': _selectedGenreId,
+      'harga': int.tryParse(_hargaC.text.trim()) ?? 0,
     };
+
+    if (_posterBytes != null) {
+      final fileName = _ensureFileName();
+      final mime = _mimeFromName(fileName);
+      body['poster_base64'] =
+          'data:$mime;base64,${base64Encode(_posterBytes!)}';
+      body['poster_filename'] = fileName;
+    }
 
     setState(() {
       _saving = true;
@@ -121,6 +226,7 @@ class _FilmFormPageState extends State<FilmFormPage> {
   @override
   Widget build(BuildContext context) {
     final primary = Theme.of(context).colorScheme.primary;
+    final cs = Theme.of(context).colorScheme;
     return Scaffold(
       backgroundColor: Theme.of(context).colorScheme.background,
       appBar: AppTheme.buildGradientAppBar(
@@ -198,6 +304,20 @@ class _FilmFormPageState extends State<FilmFormPage> {
                     },
                   ),
                   const SizedBox(height: 12),
+                  TextFormField(
+                    controller: _hargaC,
+                    keyboardType: TextInputType.number,
+                    decoration: const InputDecoration(
+                      labelText: 'Harga (Rp)',
+                      border: OutlineInputBorder(),
+                    ),
+                    validator: (v) {
+                      final n = int.tryParse(v?.trim() ?? '');
+                      if (n == null || n <= 0) return 'Harga tidak valid';
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 12),
                   DropdownButtonFormField<int>(
                     value: _selectedGenreId,
                     items: _genres.map((g) {
@@ -215,6 +335,31 @@ class _FilmFormPageState extends State<FilmFormPage> {
                       labelText: 'Genre',
                       border: OutlineInputBorder(),
                     ),
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      _posterPreviewBox(cs),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            FilledButton.icon(
+                              onPressed: _saving ? null : _pickPoster,
+                              icon: const Icon(Icons.photo_library),
+                              label: const Text('Pilih Poster'),
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              'Upload poster dengan format JPG atau PNG.',
+                              style: TextStyle(
+                                  fontSize: 12, color: cs.onSurfaceVariant),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
                   ),
                   const SizedBox(height: 24),
                   SizedBox(

@@ -20,13 +20,12 @@ class _FilmDetailPageState extends State<FilmDetailPage> {
   String? _error;
   String? _genreName;
 
-  // COMMENTS
   List<Map<String, dynamic>> _comments = [];
   bool _loadingComments = true;
   final _commentCtl = TextEditingController();
   int? _commentRating;
-  String _commentSort = 'newest'; // or 'oldest'
-  int? _currentUserId; // users pk dari login (disimpan oleh ApiService)
+  String _commentSort = 'newest';
+  int? _currentUserId;
 
   @override
   void initState() {
@@ -53,8 +52,8 @@ class _FilmDetailPageState extends State<FilmDetailPage> {
       final list = await api.commentsList(widget.filmId, sort: _commentSort);
       setState(() =>
           _comments = list.map((e) => Map<String, dynamic>.from(e)).toList());
-    } catch (e) {
-      // ignore or show inline
+    } catch (_) {
+      // biarkan kosong
     } finally {
       if (mounted) setState(() => _loadingComments = false);
     }
@@ -69,12 +68,9 @@ class _FilmDetailPageState extends State<FilmDetailPage> {
       final data = await api.filmDetail(widget.filmId);
       await _loadComments();
 
-      // 1) nama genre dari payload (jika controller sudah join)
       String? gName =
           (data['genre_name'] ?? data['genre_nama'] ?? data['genre'])
               ?.toString();
-
-      // 2) kalau belum ada, ambil dari id
       if (gName == null || gName.isEmpty) {
         final rawId = data['genre_id'] ?? data['id_genre'] ?? data['genreId'];
         final gid = rawId is int ? rawId : int.tryParse('$rawId');
@@ -105,56 +101,59 @@ class _FilmDetailPageState extends State<FilmDetailPage> {
     }
   }
 
-  String? _assetForFilm(Map<String, dynamic>? film) {
-    final title =
-        (film?['judul'] ?? film?['title'] ?? '').toString().toLowerCase();
-    if (title.contains('avangers') ||
-        title.contains('avengers') ||
-        title.contains('endgame')) return 'assets/Avangers_EndGame.png';
-    if (title.contains('laskar')) return 'assets/LaskarPelangi.png';
-    if (title.contains('stupid') || title.contains('my stupid boss'))
-      return 'assets/MyStupidBoss.png';
-    if (title.contains('pengabdi') || title.contains('setan'))
-      return 'assets/PengabdiSetan.png';
-    if (title.contains('toystory') ||
-        title.contains('toy story') ||
-        title.contains('toy')) return 'assets/ToyStory_4.png';
-    final poster = film?['poster']?.toString();
-    if (poster != null && poster.isNotEmpty) return poster;
+  String _sanitizeUrl(String? raw) {
+    if (raw == null) return '';
+    var value = raw.trim();
+    if (value.isEmpty) return '';
+    value = value.replaceAllMapped(RegExp(r':(\d+):\1'), (m) => ':${m[1]}');
+    value = value.replaceAll(RegExp(r'(?<=https?:\/\/)(\/{2,})'), '/');
+    return value;
+  }
+
+  String? _posterUrl(Map<String, dynamic>? film) {
+    if (film == null) return null;
+    for (final key in ['poster_asset_url', 'poster_url', 'poster']) {
+      final resolved = api.resolvePosterUrl(film[key]?.toString());
+      if (resolved != null) {
+        final sanitized = _sanitizeUrl(resolved);
+        if (sanitized.isNotEmpty) return sanitized;
+      }
+    }
     return null;
   }
 
-  Widget _buildCoverWidget(String? cover) {
-    if (cover == null) return const SizedBox.shrink();
-    final isNetwork =
-        cover.startsWith('http://') || cover.startsWith('https://');
-    final path = isNetwork
-        ? cover
-        : (cover.startsWith('assets/') ? cover : 'assets/$cover');
+  Widget _buildCoverWidget(String? url) {
+    if (url == null || url.isEmpty) return const SizedBox.shrink();
+    final safeUrl = _sanitizeUrl(url);
+    if (safeUrl.isEmpty) return const SizedBox.shrink();
 
     return Center(
       child: ClipRRect(
         borderRadius: BorderRadius.circular(12),
         child: ConstrainedBox(
           constraints: const BoxConstraints.tightFor(width: 260, height: 390),
-          child: isNetwork
-              ? Image.network(
-                  path,
-                  width: 260,
-                  height: 390,
-                  fit: BoxFit.fill,
-                  errorBuilder: (_, __, ___) => const SizedBox.shrink(),
-                )
-              : Image.asset(
-                  path,
-                  width: 260,
-                  height: 390,
-                  fit: BoxFit.fill,
-                  errorBuilder: (_, __, ___) => const SizedBox.shrink(),
-                ),
+          child: Image.network(
+            safeUrl,
+            width: 260,
+            height: 390,
+            fit: BoxFit.cover,
+            errorBuilder: (_, __, ___) => Container(
+              color: Colors.black12,
+              child: const Icon(Icons.broken_image, size: 64),
+            ),
+          ),
         ),
       ),
     );
+  }
+
+  String? _formatPrice(dynamic value) {
+    final raw = value is num ? value.toInt() : int.tryParse('$value');
+    if (raw == null || raw <= 0) return null;
+    final text = raw
+        .toString()
+        .replaceAllMapped(RegExp(r'(\d)(?=(\d{3})+(?!\d))'), (m) => '${m[1]}.');
+    return 'Rp $text';
   }
 
   Future<void> _submitComment() async {
@@ -162,29 +161,27 @@ class _FilmDetailPageState extends State<FilmDetailPage> {
     if (text.isEmpty) return;
     try {
       final res = await api.postComment(
-          filmId: widget.filmId, isi: text, rating: _commentRating);
-
-      // jika server mengembalikan objek komentar, tambahkan ke list lokal langsung
+        filmId: widget.filmId,
+        isi: text,
+        rating: _commentRating,
+      );
       if (res is Map<String, dynamic>) {
-        final newComment = Map<String, dynamic>.from(res);
-        setState(() {
-          _comments.insert(0, newComment);
-        });
+        setState(() => _comments.insert(0, Map<String, dynamic>.from(res)));
       } else {
-        // fallback: reload jika respons tidak seperti yang diharapkan
         await _loadComments();
       }
-
       _commentCtl.clear();
       _commentRating = null;
-      ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text('Komentar terkirim')));
-    } on ApiException catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Gagal kirim komentar: ${e.message}')));
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(const SnackBar(content: Text('Komentar terkirim')));
+      }
     } catch (e) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text('Gagal kirim komentar: $e')));
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Gagal kirim komentar: $e')),
+        );
+      }
     }
   }
 
@@ -193,76 +190,74 @@ class _FilmDetailPageState extends State<FilmDetailPage> {
         TextEditingController(text: c['isi_komentar']?.toString() ?? '');
     int? rating = c['rating'] is int
         ? c['rating'] as int
-        : (int.tryParse('${c['rating'] ?? ''}') ?? null);
+        : int.tryParse('${c['rating'] ?? ''}');
     final ok = await showDialog<bool>(
       context: context,
-      builder: (ctx) {
-        return StatefulBuilder(builder: (ctx2, setStateDialog) {
-          return AlertDialog(
-            title: const Text('Edit Komentar'),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextField(controller: ctl, maxLines: 4),
-                const SizedBox(height: 8),
-                Row(
-                  children: List.generate(5, (i) {
-                    final val = i + 1;
-                    return IconButton(
-                      icon: Icon(
-                        val <= (rating ?? 0) ? Icons.star : Icons.star_border,
-                        color: Colors.amber,
-                      ),
-                      onPressed: () => setStateDialog(() => rating = val),
-                    );
-                  }),
-                ),
-              ],
-            ),
-            actions: [
-              TextButton(
-                  onPressed: () => Navigator.pop(ctx, false),
-                  child: const Text('Batal')),
-              FilledButton(
-                  onPressed: () => Navigator.pop(ctx, true),
-                  child: const Text('Simpan')),
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx2, setStateDialog) => AlertDialog(
+          title: const Text('Edit Komentar'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(controller: ctl, maxLines: 4),
+              const SizedBox(height: 8),
+              Row(
+                children: List.generate(5, (i) {
+                  final val = i + 1;
+                  return IconButton(
+                    icon: Icon(
+                      val <= (rating ?? 0) ? Icons.star : Icons.star_border,
+                      color: Colors.amber,
+                    ),
+                    onPressed: () => setStateDialog(() => rating = val),
+                  );
+                }),
+              ),
             ],
-          );
-        });
-      },
+          ),
+          actions: [
+            TextButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                child: const Text('Batal')),
+            FilledButton(
+                onPressed: () => Navigator.pop(ctx, true),
+                child: const Text('Simpan')),
+          ],
+        ),
+      ),
     );
     if (ok != true) return;
     try {
       final res = await api.updateComment(
-          id: c['komentar_id'], isi: ctl.text.trim(), rating: rating);
-
+        id: c['komentar_id'],
+        isi: ctl.text.trim(),
+        rating: rating,
+      );
       if (res is Map<String, dynamic>) {
         final updated = Map<String, dynamic>.from(res);
-        // set edited flag if server tidak memberikan
-        if (!updated.containsKey('edited')) updated['edited'] = true;
-        // update lokal: cari index berdasarkan komentar_id dan ganti
+        updated['edited'] ??= true;
         final idx = _comments.indexWhere((e) =>
-            (e['komentar_id'] ?? e['id'] ?? e['komentarId']) ==
-            (updated['komentar_id'] ?? updated['id'] ?? updated['komentarId']));
+            (e['komentar_id'] ?? e['id']) ==
+            (updated['komentar_id'] ?? updated['id']));
         setState(() {
-          if (idx >= 0)
+          if (idx >= 0) {
             _comments[idx] = updated;
-          else
+          } else {
             _comments.insert(0, updated);
+          }
         });
       } else {
-        // fallback: reload list
         await _loadComments();
       }
-
-      ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text('Komentar diperbarui')));
-    } on ApiException catch (e) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text('Gagal update: ${e.message}')));
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(const SnackBar(content: Text('Komentar diperbarui')));
+      }
     } catch (e) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text('Gagal update: $e')));
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('Gagal update: $e')));
+      }
     }
   }
 
@@ -286,41 +281,39 @@ class _FilmDetailPageState extends State<FilmDetailPage> {
     if (!sure) return;
     try {
       await api.deleteComment(c['komentar_id']);
-
-      // hapus secara lokal agar update langsung terlihat
       setState(() {
-        _comments.removeWhere((e) =>
-            (e['komentar_id'] ?? e['id'] ?? e['komentarId']) ==
-            (c['komentar_id'] ?? c['id'] ?? c['komentarId']));
+        _comments.removeWhere(
+          (e) => (e['komentar_id'] ?? e['id']) == (c['komentar_id'] ?? c['id']),
+        );
       });
-
-      ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text('Komentar dihapus')));
-    } on ApiException catch (e) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text('Gagal hapus: ${e.message}')));
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(const SnackBar(content: Text('Komentar dihapus')));
+      }
     } catch (e) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text('Gagal hapus: $e')));
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('Gagal hapus: $e')));
+      }
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final cs = theme.colorScheme;
-    final isLight = theme.brightness == Brightness.light;
-    final infoColor = theme.cardColor;
+    final cs = Theme.of(context).colorScheme;
+    final isLight = Theme.of(context).brightness == Brightness.light;
+    final infoColor = Theme.of(context).cardColor;
     final outlineColor = cs.outlineVariant.withOpacity(isLight ? .35 : .55);
 
     final title =
         (_film?['judul'] ?? _film?['title'] ?? 'Detail Film').toString();
     final sinopsis = (_film?['sinopsis'] ?? '').toString();
     final durasi = _film?['durasi']?.toString() ?? '-';
-    final cover = _assetForFilm(_film);
+    final cover = _posterUrl(_film);
+    final priceText = _formatPrice(_film?['harga']);
 
     return Scaffold(
-      backgroundColor: Theme.of(context).colorScheme.background,
+      backgroundColor: cs.background,
       appBar: AppTheme.buildGradientAppBar(context, title),
       bottomNavigationBar: SafeArea(
         child: Padding(
@@ -372,6 +365,8 @@ class _FilmDetailPageState extends State<FilmDetailPage> {
                             _Chip(label: 'Durasi: ${durasi}m'),
                             if (_genreName != null)
                               _Chip(label: 'Genre: ${_genreName!}'),
+                            if (priceText != null)
+                              _Chip(label: 'Harga: $priceText'),
                           ],
                         ),
                         const SizedBox(height: 16),
@@ -415,7 +410,6 @@ class _FilmDetailPageState extends State<FilmDetailPage> {
                             ],
                           ),
                           const SizedBox(height: 8),
-                          // Add comment input
                           TextField(
                             controller: _commentCtl,
                             maxLines: 3,
@@ -425,7 +419,6 @@ class _FilmDetailPageState extends State<FilmDetailPage> {
                           const SizedBox(height: 8),
                           Row(
                             children: [
-                              // star rating simple
                               Row(
                                   children: List.generate(5, (i) {
                                 final val = i + 1;
@@ -446,7 +439,6 @@ class _FilmDetailPageState extends State<FilmDetailPage> {
                             ],
                           ),
                           const Divider(),
-                          // Comments list
                           if (_loadingComments)
                             const Center(child: CircularProgressIndicator())
                           else if (_comments.isEmpty)
@@ -455,7 +447,6 @@ class _FilmDetailPageState extends State<FilmDetailPage> {
                           else
                             Column(
                               children: _comments.map((c) {
-                                // prefer commenter_profile from server: display_name + is_admin
                                 final cp = (c['commenter_profile'] is Map)
                                     ? Map<String, dynamic>.from(
                                         c['commenter_profile'])
@@ -466,9 +457,7 @@ class _FilmDetailPageState extends State<FilmDetailPage> {
                                 final displayName =
                                     (cp['display_name'] as String?) ??
                                         commenterName;
-                                final isAdmin = (cp['is_admin'] == true);
                                 final edited = (c['edited'] == true);
-                                final uid = cp['id'] ?? c['users_id'];
                                 final date =
                                     _fmtDate(c['tanggal']?.toString() ?? '');
                                 final content =
@@ -481,12 +470,13 @@ class _FilmDetailPageState extends State<FilmDetailPage> {
                                             ? c['users_id']
                                             : int.tryParse(
                                                 '${c['users_id']}')));
-                                // avatar inisial dari nama
+
                                 String initials(String s) {
                                   final parts = s.trim().split(' ');
-                                  if (parts.length >= 2)
+                                  if (parts.length >= 2) {
                                     return '${parts[0][0]}${parts[1][0]}'
                                         .toUpperCase();
+                                  }
                                   return s.isNotEmpty
                                       ? s[0].toUpperCase()
                                       : '?';
@@ -496,8 +486,8 @@ class _FilmDetailPageState extends State<FilmDetailPage> {
                                   leading: CircleAvatar(
                                     backgroundColor: Colors.grey.shade200,
                                     child: Text(initials(commenterName),
-                                        style:
-                                            TextStyle(color: Colors.black87)),
+                                        style: const TextStyle(
+                                            color: Colors.black87)),
                                   ),
                                   title: Row(
                                     children: [
